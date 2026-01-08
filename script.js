@@ -387,33 +387,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const brandName = brandNameInput.value;
         const currentDetectedBrand = detectedBrandName.value;
         if (brandName) {
-            // Priority 1: Global Replace of detected name (Text Nodes)
+            // Strategy: Global Text Node Replacement (SAFE)
+            // This replaces the text wherever it appears without destroying elements
             replaceGlobalText(doc.body, currentDetectedBrand, brandName);
 
-            // Priority 2: Robust Fallback Selectors (Matches Detection Logic)
-            // Includes all selectors used in detectBranding helper
-            const brandSelectors = [
-                '.navbar-brand', '.brand', '.logo', '.logo-text', '.brand-name',
-                '.sidebar-header h1', '.sidebar-header h2', '.sidebar-header h3',
-                'header h1', 'header h2', '.app-name', '.site-title',
-                '.sidebar-brand', '.sidebar-title', 'a.brand', 'a.navbar-brand span',
-                '.text-lg.font-bold', '.font-bold.text-xl' // Common Tailwind patterns
-            ];
-
-            brandSelectors.forEach(sel => {
-                const els = doc.querySelectorAll(sel);
-                els.forEach(el => {
-                    // STRICTEST SAFETY: Only replace text if the element has NO children (Leaf Node)
-                    // This prevents wiping out icons, spans, scripts, or structural divs.
-                    if (el.children.length > 0) return;
-
-                    const text = el.textContent.trim();
-                    // Check if it matches detected brand (exact or partial)
-                    if (text === currentDetectedBrand.trim() || text.includes(currentDetectedBrand.trim())) {
-                        el.textContent = brandName;
-                    }
-                });
-            });
+            // Minimal Fallback: Update Title
             doc.title = brandName;
         }
 
@@ -421,37 +399,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const slogan = sloganInput.value;
         const currentDetectedSlogan = detectedSlogan.value;
         if (slogan) {
-            // Priority 1: Global Replace of detected slogan
+            // Strategy: Global Text Node Replacement (SAFE)
             replaceGlobalText(doc.body, currentDetectedSlogan, slogan);
-
-            // Priority 2: Fallback Selectors (Safe Leaf Nodes Only)
-            const sloganSelectors = [
-                '.slogan', '.subtitle', '.tagline', '.description',
-                '.sidebar-header p', '.sidebar-header small', '.sidebar-header span',
-                'header p', 'header small',
-                '.hero-text p', '.hero-section p', '.main-header p',
-                '.version-badge', '.badge', '.app-version'
-            ];
-
-            sloganSelectors.forEach(sel => {
-                const els = doc.querySelectorAll(sel);
-                els.forEach(el => {
-                    // Safety: Leaf nodes only
-                    if (el.children.length > 0) return;
-
-                    const text = el.innerText.trim();
-                    if (text.length > 0) {
-                        // If it matches detected or is "Not detected", we replace.
-                        if (currentDetectedSlogan !== "Not detected" && text.includes(currentDetectedSlogan)) {
-                            el.innerText = slogan;
-                        }
-                        else if (currentDetectedSlogan === "Not detected" && text.length < 100) {
-                            // Only replace generic containers if we didn't suspect a specific slogan, to be safe
-                            el.innerText = slogan;
-                        }
-                    }
-                });
-            });
         }
 
         // 3. Logo
@@ -463,7 +412,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (originalSrc) {
                 const allImgs = doc.querySelectorAll('img');
                 allImgs.forEach(img => {
-                    // Check if src ends with the detected file name or matches
                     if (img.src === originalSrc || img.getAttribute('src') === originalSrc) {
                         img.src = logoUrl;
                         if (img.srcset) img.removeAttribute('srcset');
@@ -471,7 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
-            // Strategy B: Selectors Fallback
+            // Strategy B: Selectors Fallback (Safe, only updates src)
             const logoSelectors = [
                 '.logo img', '.brand img', 'img.logo', 'header img',
                 '.sidebar-header img', 'img.brand-logo', '.navbar-brand img',
@@ -493,13 +441,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // Priority 1: Global Replace of detected company
             replaceGlobalText(doc.body, currentDetectedComp, companyName);
 
-            // Priority 2: Targeted Footer Updates (Preserving format while updating company)
-            // Strategy: Find any text node containing "©" and ensuring the company name appears in it.
-            // But be careful not to overwrite the other replacements (Brand/Slogan) that just happened.
+            // Priority 2: Targeted Footer Updates (Text Node Walker - SAFE)
             const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null, false);
             let node;
             const copysToUpdate = [];
             while (node = walker.nextNode()) {
+                // Skip sensitive tags just in case
+                if (node.parentNode && ['SCRIPT', 'STYLE'].includes(node.parentNode.tagName)) continue;
+
                 if (node.nodeValue.includes('©') || node.nodeValue.toLowerCase().includes('copyright')) {
                     copysToUpdate.push(node);
                 }
@@ -512,47 +461,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // If there is "by ...", replace the rest
                 if (lower.includes('by ')) {
-                    const parts = text.split(/by /i);
-                    // Keep the first part (which contains the App Name / Slogan if they are there), replace the second part
-                    // Regex to find where "by" is
                     const match = text.match(/by\s+/i);
                     if (match) {
                         const index = match.index;
                         const prefix = text.substring(0, index + match[0].length);
-                        // Check if the original detected company was here
-                        // If "Ichsan Labs" was here, global replace might have already fixed it.
-                        // But if Global Replace failed (e.g. whitespace mismatch), we fix it here.
                         n.nodeValue = prefix + companyName;
-                    }
-                } else {
-                    // If no "by", maybe just formatted as "© 2025 [Company]"
-                    // We only touch it if it DOESN'T contain our new company name yet
-                    if (!text.includes(companyName)) {
-                        // This is risky, but if it has © and no company name, we might want to append it?
-                        // Or maybe it's "© 2025 AppName".
-                        // Let's assume the user wants "by [Company]" if it's missing? 
-                        // Actually, better safe than sorry: only touch implicit company if we are sure.
                     }
                 }
             });
 
-            // Priority 3: Fallback specific checks
-            const footerCopyright = doc.querySelectorAll('footer p, .copyright, .footer-text, .footer-copyright, .sidebar-footer, footer div, small');
-            footerCopyright.forEach(el => {
-                const text = el.textContent.toLowerCase();
-                // Only if it wasn't touched by the walker above (walker modifies text nodes, so el.textContent would reflect changes)
-                // But if the structure is complex, let's just check if companyName is missing
-                if ((text.includes('©') || text.includes('copyright')) && !el.textContent.includes(companyName)) {
-                    // Force update ONLY if we are fairly sure it's the copyright line
-                    // And if it doesn't look like we just replaced the brand there.
-                    // The user complained about "Ichsan Labs" remaining.
-                    // So we aggressively look for "Ichsan" or "Labs" if detected logic failed?
-                    // No, let's trust the "by" logic above first.
-                }
-                if (text.trim().startsWith('by ')) {
-                    el.innerText = `by ${companyName}`;
-                }
-            });
+            // Remove risky querySelector logic for footer
         }
 
         // --- B. CSS Branding Injection (SKIPPED IF ORIGINAL) ---
