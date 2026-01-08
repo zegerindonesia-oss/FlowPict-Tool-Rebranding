@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Controls
     const deviceBtns = document.querySelectorAll('.device-btn');
     const previewContainer = document.querySelector('.preview-container');
-    const downloadBtn = document.getElementById('downloadBtn');
+    // const downloadBtn = document.getElementById('downloadBtn');
     const copyBtn = document.getElementById('copyBtn');
 
     // State
@@ -358,38 +358,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updatePreview();
         applyBtn.innerText = 'Applied!';
         applyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Applied!';
-        setTimeout(() => {
-            applyBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Apply Customisation';
-        }, 1500);
-    });
-
-    // Copy / Download
-    copyBtn.addEventListener('click', () => {
-        const finalCode = generateModifiedHtml(htmlInput.value);
-        navigator.clipboard.writeText(finalCode).then(() => {
-            copyBtn.innerText = 'Copied!';
-            copyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
-            setTimeout(() => {
-                copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy Code';
-            }, 2000);
-        });
-    });
-
-    downloadBtn.addEventListener('click', () => {
-        const finalCode = generateModifiedHtml(htmlInput.value);
-        const blob = new Blob([finalCode], { type: "text/html" });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = "rebranded_page.html";
-        link.click();
-    });
-
-    // File Upload Handler
-    htmlUpload.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        fileNameDisplay.innerText = file.name;
         fileNameDisplay.style.color = '#1e293b';
 
         // Show loading state
