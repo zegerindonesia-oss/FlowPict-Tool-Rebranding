@@ -172,11 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Live update triggers
-    const inputs = [brandNameInput, sloganInput, logoUrlInput, companyNameInput, primaryColorInput, colorModeInput, fontFamilyInput, bgStyleInput, navPositionInput, sidebarColorInput];
-    inputs.forEach(input => {
-        if (input) input.addEventListener('input', updatePreview);
-    });
+
 
     // 1.5 Smart Detection (Auto-fill)
     function detectBranding(html) {
