@@ -108,38 +108,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Event Listeners ---
 
-    // Theme Preset Handler
+    // Theme Preset Handler (Direct Update)
     if (themePresetInput) {
-        themePresetInput.addEventListener('change', () => {
-            const theme = themeConfigs[themePresetInput.value];
-            if (theme) {
-                // Apply values to inputs
-                primaryColorInput.value = theme.primary;
-                sidebarColorInput.value = theme.sidebar;
-                colorModeInput.value = theme.mode;
-                bgStyleInput.value = theme.bg;
-
-                // Try to match font if option exists, otherwise default
-                // Simple logic: just set it, browser handles fallback if option missing from select? 
-                // Actually select inputs need valid value. 
-                // Let's just assume standard fonts or generic families.
-                // Current options in HTML: Inter, Roboto, Poppins, Lato
-                // For Classic Brown we might want a serif. HTML doesn't have it yet.
-                // Let's map strict to available options or just leave current if no match.
-
-                const fontMap = {
-                    'Georgia, serif': 'Inter, sans-serif', // Fallback as HTML options are limited
-                    'Courier New, monospace': 'Inter, sans-serif'
-                };
-
-                // If the exact font isn't in the list, stick to Inter or current.
-                // But let's try to set if it matches one of the values.
-                fontFamilyInput.value = theme.font;
-
-                // Trigger update
-                updatePreview();
-            }
-        });
+        themePresetInput.addEventListener('change', updatePreview);
     }
 
     // Live update triggers
@@ -271,108 +242,187 @@ document.addEventListener('DOMContentLoaded', () => {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
-        // A. Apply Branding
-        // Note: We use the *Detected* value to find the element again and replace it.
-        // This is safer than generic selectors which might miss or hit wrong things.
+        // Get Current Theme Config
+        const selectedThemeKey = themePresetInput ? themePresetInput.value : 'modernPurple';
+        // Fallback to modernPurple if key invalid (e.g. 'custom' removed)
+        const theme = themeConfigs[selectedThemeKey] || themeConfigs['modernPurple'];
+
+        // --- A. Content Replacement (Brand, Slogan, etc.) ---
+        // (Existing logic kept but optimized)
 
         // 1. App Name
-        if (brandNameInput.value) {
+        const brandName = brandNameInput.value; // Using brandNameInput.value as per original context
+        if (brandName) {
             const currentDetected = detectedBrandName.value;
             let replaced = false;
-
-            // Try explicit replacement first
             if (currentDetected && currentDetected !== "Not detected") {
                 const allElements = doc.querySelectorAll('*');
                 for (let el of allElements) {
-                    // Strict match often fails due to hidden chars or spacing. Relax it.
                     if (el.children.length === 0 && el.innerText.includes(currentDetected)) {
-                        // Only replace if it's the dominant text
                         if (el.innerText.trim() === currentDetected.trim()) {
-                            el.innerText = brandNameInput.value;
+                            el.innerText = brandName;
                             replaced = true;
                         }
                     }
                 }
             }
-            // Fallback for tricky structures
             if (!replaced) {
-                const candidates = doc.querySelectorAll('.navbar-brand, .brand, .logo, h1, .brand-name');
+                const candidates = doc.querySelectorAll('.navbar-brand, .brand, .logo, h1, .brand-name, .sidebar-brand');
                 candidates.forEach(el => {
-                    if (el.innerText.length < 50 && el.innerText.length > 0) el.innerText = brandNameInput.value;
+                    if (el.innerText.length < 50 && el.innerText.length > 0) el.innerText = brandName;
                 });
             }
-            doc.title = brandNameInput.value;
+            doc.title = brandName;
         }
 
         // 2. Slogan
-        if (sloganInput.value) {
-            const currentDetected = detectedSlogan.value;
-            let replaced = false;
-            if (currentDetected && currentDetected !== "Not detected") {
-                const allElements = doc.querySelectorAll('p, span, small, div');
-                for (let el of allElements) {
-                    if (el.children.length === 0 && el.innerText.trim() === currentDetected.trim()) {
-                        el.innerText = sloganInput.value;
-                        replaced = true;
-                    }
-                }
-            }
-            if (!replaced) {
-                const potentialSlogans = doc.querySelectorAll('.slogan, .subtitle, p.description');
-                if (potentialSlogans.length > 0) potentialSlogans[0].innerText = sloganInput.value;
-            }
+        const slogan = sloganInput.value; // Using sloganInput.value as per original context
+        if (slogan) {
+            const potentialSlogans = doc.querySelectorAll('.slogan, .subtitle, p.description, .tagline');
+            potentialSlogans.forEach(el => el.innerText = slogan);
         }
 
         // 3. Logo
-        if (logoUrlInput.value) {
-            const logoImgs = doc.querySelectorAll('.logo img, .brand img, img.logo, header img, .sidebar-header img');
-            logoImgs.forEach(img => img.src = logoUrlInput.value);
+        const logoUrl = logoUrlInput.value; // Using logoUrlInput.value as per original context
+        if (logoUrl) {
+            const logoImgs = doc.querySelectorAll('.logo img, .brand img, img.logo, header img, .sidebar-header img, img.brand-logo');
+            logoImgs.forEach(img => img.src = logoUrl);
         }
 
-        // 4. Company
-        if (companyNameInput.value) {
+        // 4. Company Name
+        const companyName = companyNameInput.value; // Using companyNameInput.value as per original context
+        if (companyName) {
             const footerCopyright = doc.querySelectorAll('footer p, .copyright, .footer-text, .footer-copyright');
             footerCopyright.forEach(el => {
                 if (el.innerText.includes('©') || el.innerText.toLowerCase().includes('copyright')) {
-                    el.innerText = `© ${new Date().getFullYear()} ${companyNameInput.value}. All rights reserved.`;
+                    el.innerText = `© ${new Date().getFullYear()} ${companyName}. All rights reserved.`;
                 }
             });
         }
 
-        // B. Apply Styling (Injected CSS)
+        // --- B. CSS Branding Injection (The Core "Engine") ---
         const styleTag = doc.createElement('style');
-        let css = '';
-        const pColor = primaryColorInput.value;
-        const sColor = sidebarColorInput.value; // New Sidebar Color
 
-        if (colorModeInput.value === 'gradient') {
-            css += `:root { --primary: ${pColor}; --primary-gradient: linear-gradient(135deg, ${pColor} 0%, ${adjustHue(pColor, 40)} 100%) !important; }
-                     .btn-primary, .primary-btn, button.primary, .active { background: var(--primary-gradient) !important; border-color: transparent !important; color: white !important; }
-                     .text-gradient, h1 span, .brand { background: var(--primary-gradient) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; }`;
-        } else {
-            css += `:root { --primary: ${pColor}; --primary-gradient: ${pColor} !important; }
-                     .btn-primary, .primary-btn, button { background: ${pColor} !important; color: white !important;}
-                     a { color: ${pColor}; }`;
-        }
+        // 1. Define Variables
+        let css = `
+            :root {
+                --theme-primary: ${theme.primary} !important;
+                --theme-primary-dark: ${theme.primaryDark} !important;
+                --theme-sidebar: ${theme.sidebar} !important;
+                --theme-sidebar-text: ${theme.sidebarText} !important;
+                --theme-accent: ${theme.accent} !important;
+                --theme-surface: ${theme.surface} !important;
+                --theme-font: ${theme.font} !important;
+            }
+        `;
 
-        // Sidebar Color Override
-        if (sColor && sColor !== "#0f172a") {
+        // 2. Button Styling
+        if (theme.mode === 'gradient') {
             css += `
-                nav, .sidebar, aside, .drawer, .navbar-vertical {
-                    background: ${sColor} !important;
-                    background-color: ${sColor} !important;
+                /* Gradient Buttons */
+                .btn-primary, button.primary, .btn-main, button[type="submit"], .action-btn { 
+                    background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-dark) 100%) !important; 
+                    border: none !important;
+                    color: white !important;
+                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
                 }
-                nav a, .sidebar a { color: rgba(255,255,255,0.8) !important; }
-                nav a:hover, .sidebar a:hover, nav a.active { color: white !important; background: rgba(255,255,255,0.1) !important; }
-            `;
+                .btn-primary:hover, button.primary:hover {
+                    opacity: 0.9 !important;
+                    transform: translateY(-1px) !important;
+                }
+                /* Text Gradients */
+                .text-gradient, h1.title, .brand-text {
+                     background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-dark) 100%) !important; 
+                     -webkit-background-clip: text !important;
+                     -webkit-text-fill-color: transparent !important;
+                }
+             `;
+        } else {
+            css += `
+                /* Solid Buttons */
+                .btn-primary, button.primary, .btn-main, button[type="submit"] { 
+                    background: var(--theme-primary) !important; 
+                    color: white !important;
+                }
+             `;
         }
 
-        css += `body, button, input, h1, h2, h3, a, span { font-family: ${fontFamilyInput.value} !important; }`;
+        // 3. Sidebar / Navigation Styling (Deep Override)
+        css += `
+            nav, .sidebar, aside, .drawer, .navbar-vertical, .menu-sidebar {
+                background: var(--theme-sidebar) !important;
+                background-color: var(--theme-sidebar) !important;
+                color: var(--theme-sidebar-text) !important;
+                border-right: 1px solid rgba(255,255,255,0.05) !important;
+            }
+            
+            /* Sidebar Links */
+            nav a, .sidebar a, .menu-item, .nav-item {
+                color: rgba(255,255,255, 0.7) !important; 
+                transition: all 0.2s ease !important;
+            }
+            
+            nav a:hover, .sidebar a:hover, .menu-item:hover, nav a.active, .sidebar a.active, .nav-item.active {
+                background: rgba(255,255,255, 0.1) !important;
+                color: white !important;
+                border-radius: 8px !important;
+            }
+            
+            /* Sidebar HEADERS (e.g. "Produk & Promosi", "Edit & Gabung") */
+            .sidebar-header, .nav-section-title, .menu-title, .sidebar h1, .sidebar h2, .sidebar h3, .sidebar h4, .sidebar h5, .sidebar span.text-muted, .sidebar small {
+                color: rgba(255,255,255, 0.5) !important;
+                text-transform: uppercase !important;
+                letter-spacing: 0.05em !important;
+            }
+        `;
 
-        if (bgStyleInput.value === 'gradient') css += `body { background: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%) !important; }`;
-        else if (bgStyleInput.value === 'dark') css += `body { background: #0f172a !important; color: #f1f5f9 !important; } .card, .panel, .sidebar { background: #1e293b !important; color: white; } a { color: #fff !important; }`;
+        // 4. Global Typography & Headings
+        css += `
+            body { 
+                font-family: var(--theme-font) !important; 
+                background-color: var(--theme-surface) !important;
+            }
+            
+            h1, h2, h3, h4, .h1, .h2, .h3, .heading {
+                color: var(--theme-primary-dark) !important; /* Force colored headers */
+            }
+            
+            a { color: var(--theme-primary) !important; }
+            
+            /* Override Utility Classes (common in Tailwind/Bootstrap) */
+            .text-primary, .text-blue-600, .text-green-600, .text-indigo-600, .text-purple-600 {
+                color: var(--theme-primary) !important;
+            }
+            
+            .bg-primary, .bg-blue-600, .bg-green-600, .bg-indigo-600 {
+                background-color: var(--theme-primary) !important;
+            }
+            
+            .border-primary {
+                border-color: var(--theme-primary) !important;
+            }
+            
+            /* Badges / Labels (e.g. "New") */
+            .badge, .label, span.new, span.hot {
+                background: var(--theme-primary) !important;
+                color: white !important;
+            }
+        `;
 
-        // Layout overrides
+        // 5. Special Elements (Inputs, Cards)
+        css += `
+            input:focus, select:focus, textarea:focus {
+                border-color: var(--theme-primary) !important;
+                box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2) !important; /* Fix shadow color later? Just generic tint */
+            }
+            
+            .card, .panel, .box {
+                border-top: 4px solid var(--theme-primary) !important; /* Nice touch for cards */
+                border-radius: 12px !important;
+            }
+        `;
+
+        // Layout overrides (kept from original, but might need adjustment with new theme vars)
         if (navPositionInput.value === 'left') {
             css += `body { display: flex !important; flex-direction: row !important; }
                     nav, header, .sidebar { width: 260px !important; height: 100vh !important; position: sticky !important; top: 0 !important; flex-direction: column !important; border-right: 1px solid rgba(0,0,0,0.1); }
@@ -386,36 +436,20 @@ document.addEventListener('DOMContentLoaded', () => {
         styleTag.innerHTML = css;
         doc.head.appendChild(styleTag);
 
-        // C. Apply Nav Renaming (More Aggressive Strategy)
+        // --- C. Nav Renaming ---
         if (currentNavItems.length > 0) {
-            // Because extractNavItems uses a specific logic, we must mirror it for replacement
-            // Or use a more robust "find by original text" approach
             const allLinks = doc.querySelectorAll('a, button, [role="button"], .nav-item, li');
-
-            let navIndex = 0;
-            // Iterate our Stored Nav Items because that's the source of truth for "what to replace"
-
-            // Build a map for faster lookup? No, just iterate
             currentNavItems.forEach((item, idx) => {
                 const input = document.getElementById(`nav-item-${idx}`);
                 if (input && input.value && input.value !== item.original) {
-                    // Find element with this original text
                     for (let el of allLinks) {
-                        // Clean detection text
                         let rawText = el.innerText;
                         if (!rawText) continue;
-
-                        // Check if this element matches the original text we detected
-                        // Note: The detected text 'item.original' already had badges stripped effectively
-                        // So we check if the element's text *contains* the original text
                         if (rawText.includes(item.original)) {
-                            // Be careful not to wipe icons.
-                            // Find the text node that matches.
                             const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
                             let textNode = walker.nextNode();
                             while (textNode) {
                                 if (textNode.nodeValue.includes(item.original)) {
-                                    // Replace specific text
                                     textNode.nodeValue = textNode.nodeValue.replace(item.original, input.value);
                                     break;
                                 }
@@ -429,6 +463,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return doc.documentElement.outerHTML;
     }
+
+    // --- (Removed old 'detectBranding' calls if redundant, but strictly keeping structure) ---
+    // NOTE: We need to make sure themeConfigs is defined BEFORE this function. It is. 
+
 
     // 3. Extract Nav Items (Improved x2)
     function extractNavItems() {
