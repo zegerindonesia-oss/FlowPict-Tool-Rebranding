@@ -458,18 +458,63 @@ document.addEventListener('DOMContentLoaded', () => {
             // Priority 1: Global Replace of detected company
             replaceGlobalText(doc.body, currentDetectedComp, companyName);
 
-            // Priority 2: Standard Footer Updates (Copyright lines)
+            // Priority 2: Targeted Footer Updates (Preserving format while updating company)
+            // Strategy: Find any text node containing "©" and ensuring the company name appears in it.
+            // But be careful not to overwrite the other replacements (Brand/Slogan) that just happened.
+            const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null, false);
+            let node;
+            const copysToUpdate = [];
+            while (node = walker.nextNode()) {
+                if (node.nodeValue.includes('©') || node.nodeValue.toLowerCase().includes('copyright')) {
+                    copysToUpdate.push(node);
+                }
+            }
+
+            copysToUpdate.forEach(n => {
+                let text = n.nodeValue;
+                // Try to find "by [Something]" or just append company if missing
+                const lower = text.toLowerCase();
+
+                // If there is "by ...", replace the rest
+                if (lower.includes('by ')) {
+                    const parts = text.split(/by /i);
+                    // Keep the first part (which contains the App Name / Slogan if they are there), replace the second part
+                    // Regex to find where "by" is
+                    const match = text.match(/by\s+/i);
+                    if (match) {
+                        const index = match.index;
+                        const prefix = text.substring(0, index + match[0].length);
+                        // Check if the original detected company was here
+                        // If "Ichsan Labs" was here, global replace might have already fixed it.
+                        // But if Global Replace failed (e.g. whitespace mismatch), we fix it here.
+                        n.nodeValue = prefix + companyName;
+                    }
+                } else {
+                    // If no "by", maybe just formatted as "© 2025 [Company]"
+                    // We only touch it if it DOESN'T contain our new company name yet
+                    if (!text.includes(companyName)) {
+                        // This is risky, but if it has © and no company name, we might want to append it?
+                        // Or maybe it's "© 2025 AppName".
+                        // Let's assume the user wants "by [Company]" if it's missing? 
+                        // Actually, better safe than sorry: only touch implicit company if we are sure.
+                    }
+                }
+            });
+
+            // Priority 3: Fallback specific checks
             const footerCopyright = doc.querySelectorAll('footer p, .copyright, .footer-text, .footer-copyright, .sidebar-footer, footer div, small');
             footerCopyright.forEach(el => {
                 const text = el.textContent.toLowerCase();
-                if (text.includes('©') || text.includes('copyright')) {
-                    // Update the year/name only
-                    // If regex fails (simple text), just overwrite if it's short
-                    if (el.innerText.length < 100 && !el.innerHTML.includes(companyName)) {
-                        el.innerText = `© ${new Date().getFullYear()} ${companyName}. All rights reserved.`;
-                    }
+                // Only if it wasn't touched by the walker above (walker modifies text nodes, so el.textContent would reflect changes)
+                // But if the structure is complex, let's just check if companyName is missing
+                if ((text.includes('©') || text.includes('copyright')) && !el.textContent.includes(companyName)) {
+                    // Force update ONLY if we are fairly sure it's the copyright line
+                    // And if it doesn't look like we just replaced the brand there.
+                    // The user complained about "Ichsan Labs" remaining.
+                    // So we aggressively look for "Ichsan" or "Labs" if detected logic failed?
+                    // No, let's trust the "by" logic above first.
                 }
-                else if (text.trim().startsWith('by ')) {
+                if (text.trim().startsWith('by ')) {
                     el.innerText = `by ${companyName}`;
                 }
             });
