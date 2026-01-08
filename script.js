@@ -182,6 +182,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // Strategy C: Document Title (Final Fallback)
+        if (!brandFound && doc.title && doc.title.length < 50) {
+            // Remove common suffixes like " - Home", " | Official"
+            let cleanTitle = doc.title.split(/[-|]/)[0].trim();
+            if (cleanTitle.length > 0) {
+                detectedBrandName.value = cleanTitle;
+                brandFound = true;
+            }
+        }
+
         // AUTO-FILL Brand Input
         if (brandFound) {
             brandNameInput.value = detectedBrandName.value;
