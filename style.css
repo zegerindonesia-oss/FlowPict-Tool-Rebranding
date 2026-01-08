@@ -173,41 +173,7 @@ body {
 }
 
 /* Inputs */
-.input-tabs {
-    display: flex;
-    margin-bottom: 12px;
-    background: #f1f5f9;
-    padding: 4px;
-    border-radius: var(--radius-sm);
-}
-
-.tab-btn {
-    flex: 1;
-    border: none;
-    background: transparent;
-    padding: 6px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: 0.2s;
-}
-
-.tab-btn.active {
-    background: white;
-    color: var(--accent-color);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    font-weight: 600;
-}
-
-.tab-content {
-    display: none;
-}
-
-.tab-content.active {
-    display: block;
-}
+/* Removed Tab Styles */
 
 .input-wrapper textarea {
     width: 100%;
@@ -223,7 +189,7 @@ body {
 }
 
 .file-upload-wrapper {
-    margin-top: 8px;
+    margin-top: 0;
 }
 
 .upload-label {
@@ -233,33 +199,30 @@ body {
     justify-content: center;
     border: 2px dashed #cbd5e1;
     border-radius: var(--radius-sm);
-    padding: 24px;
+    padding: 32px 24px;
     cursor: pointer;
     transition: 0.2s;
     background: #f8fafc;
     color: var(--text-secondary);
-    gap: 8px;
+    gap: 12px;
 }
 
 .upload-label:hover {
     border-color: var(--accent-color);
     background: rgba(139, 92, 246, 0.05);
-    color: var(--accent-color);
 }
 
 .upload-label i {
-    font-size: 24px;
-}
-
-.upload-label span {
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 32px;
+    color: var(--accent-color);
+    margin-bottom: 4px;
 }
 
 .file-name {
-    font-size: 11px !important;
-    color: #94a3b8;
-    margin-top: 4px;
+    font-size: 12px !important;
+    color: #64748b;
+    margin-top: 8px;
+    font-weight: 500;
 }
 
 .input-wrapper textarea:focus {

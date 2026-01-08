@@ -34,30 +34,20 @@
                 <section class="control-group">
                     <div class="group-header">
                         <span class="step-number">1</span>
-                        <h3>Source Code</h3>
+                        <h3>Upload HTML</h3>
                     </div>
 
-                    <div class="input-tabs">
-                        <button class="tab-btn active" data-tab="paste">Paste Code</button>
-                        <button class="tab-btn" data-tab="upload">Upload File</button>
-                    </div>
+                    <!-- Hidden Textarea for State Storage -->
+                    <textarea id="htmlInput" style="display: none;" spellcheck="false"></textarea>
 
-                    <div id="tab-paste" class="tab-content active">
-                        <div class="input-wrapper">
-                            <textarea id="htmlInput" placeholder="Paste your HTML code here..."
-                                spellcheck="false"></textarea>
-                        </div>
-                    </div>
-
-                    <div id="tab-upload" class="tab-content">
-                        <div class="file-upload-wrapper">
-                            <input type="file" id="htmlUpload" accept=".html,.htm" hidden>
-                            <label for="htmlUpload" class="upload-label">
-                                <i class="fa-solid fa-cloud-arrow-up"></i>
-                                <span>Click to upload HTML file</span>
-                                <span id="fileName" class="file-name">No file chosen</span>
-                            </label>
-                        </div>
+                    <div class="file-upload-wrapper">
+                        <input type="file" id="htmlUpload" accept=".html,.htm" hidden>
+                        <label for="htmlUpload" class="upload-label">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <span class="btn primary-btn"
+                                style="width: auto; margin-top: 10px; pointer-events: none;">Choose HTML File</span>
+                            <span id="fileName" class="file-name">No file chosen</span>
+                        </label>
                     </div>
                 </section>
 

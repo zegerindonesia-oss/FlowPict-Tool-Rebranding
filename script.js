@@ -324,15 +324,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     htmlInput.addEventListener('input', () => {
-        // Only detect on first significant paste? 
-        // Or just run it. If user edits html, we might re-detect.
-        // Let's run detect only if the specific branding fields are empty to avoid overwriting user manual input?
-        // Actually user wants "Field di atas muncul custom brand".
-
-        // Strategy: Run detectBranding only when Paste/Upload happens, NOT on every keystroke of html editing if possible, 
-        // but here 'input' on textarea covers paste.
-        // We will simple check inside detectBranding if fields are computed.
-
         // For simplicity: We call it here.
         if (htmlInput.value.length > 20 && !brandNameInput.value) {
             detectBranding(htmlInput.value);
@@ -361,6 +352,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Apply Button
+    applyBtn.addEventListener('click', () => {
+        // Just trigger update again (visual feedback)
+        updatePreview();
+        applyBtn.innerText = 'Applied!';
+        applyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Applied!';
+        setTimeout(() => {
+            applyBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Apply Customisation';
+        }, 1500);
+    });
+
     // Copy / Download
     copyBtn.addEventListener('click', () => {
         const finalCode = generateModifiedHtml(htmlInput.value);
@@ -382,37 +384,33 @@ document.addEventListener('DOMContentLoaded', () => {
         link.click();
     });
 
-    // Tab Switching
-    tabBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            // Remove active class
-            tabBtns.forEach(b => b.classList.remove('active'));
-            tabContents.forEach(c => c.classList.remove('active'));
-
-            // Activate clicked
-            btn.classList.add('active');
-            const targetId = `tab-${btn.dataset.tab}`;
-            document.getElementById(targetId).classList.add('active');
-        });
-    });
-
     // File Upload Handler
+    // Direct change event on the input
     htmlUpload.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
         fileNameDisplay.innerText = file.name;
+        fileNameDisplay.style.color = '#1e293b';
 
         const reader = new FileReader();
         reader.onload = (event) => {
             const content = event.target.result;
-            htmlInput.value = content; // Sync with textarea
+            // Store content in the hidden input to be used by updatePreview
+            htmlInput.value = content;
 
             // Clear inputs to allow re-detection when new file is uploaded
+            // Reset "Detected" fields
+            detectedBrandName.value = "Scanning...";
+            detectedSlogan.value = "Scanning...";
+            detectedLogo.value = "Scanning...";
+            detectedCompany.value = "Scanning...";
             brandNameInput.value = '';
             sloganInput.value = '';
             logoUrlInput.value = '';
+            companyNameInput.value = '';
 
+            // Run logic
             detectBranding(content);
             extractNavItems();
             updatePreview();
