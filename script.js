@@ -231,16 +231,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Detect Slogan ---
         let sloganFound = false;
+        // Broader selectors for detection
         const sloganSelectors = [
             '.slogan', '.subtitle', '.tagline', '.description',
             '.sidebar-header p', '.sidebar-header small', '.sidebar-header span',
-            'header p', 'header small'
+            'header p', 'header small',
+            '.hero-text p', '.hero-section p', '.main-header p'
         ];
 
         for (let sel of sloganSelectors) {
             const el = doc.querySelector(sel);
-            if (el && el.innerText.trim().length > 0 && el.innerText.trim().length < 60) {
-                if (!el.innerText.toLowerCase().includes('admin') && !el.innerText.toLowerCase().includes('menu')) {
+            if (el && el.innerText.trim().length > 0 && el.innerText.trim().length < 80) { // Increased length limit slightly
+                // Filter out common non-slogan text
+                const text = el.innerText.toLowerCase();
+                if (!text.includes('admin') && !text.includes('menu') && !text.includes('copyright')) {
                     detectedSlogan.value = el.innerText.trim();
                     sloganFound = true;
                     break;
@@ -256,7 +260,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // --- Detect Logo ---
-        const logoImg = doc.querySelector('.brand img, .logo img, .navbar-brand img, header img, .sidebar-header img, img.logo');
+        // Broader selectors for logo
+        const logoSelectors = [
+            '.brand img', '.logo img', '.navbar-brand img',
+            'header img', '.sidebar-header img', 'img.logo',
+            'img.brand-logo', '#logo img', 'a.brand-link img'
+        ];
+
+        // Try all logo selectors
+        let logoImg = null;
+        for (let sel of logoSelectors) {
+            logoImg = doc.querySelector(sel);
+            if (logoImg) break;
+        }
+
         if (logoImg && logoImg.src) {
             detectedLogo.value = "Found image";
             detectedLogo.title = logoImg.src;
@@ -266,14 +283,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // --- Detect Company (Footer) ---
-        const footerCopyright = doc.querySelectorAll('footer p, footer div, .copyright, .footer-text, .footer-copyright');
+        const footerCopyright = doc.querySelectorAll('footer p, footer div, .copyright, .footer-text, .footer-copyright, footer span');
         let companyFound = false;
+
+        // 1. Try standard "Copyright" patterns
         for (let el of footerCopyright) {
             const text = el.innerText.toLowerCase();
-            if (text.includes('©') || text.includes('copyright') || text.includes('by ')) {
+            if (text.includes('©') || text.includes('copyright')) {
                 let cleanText = el.innerText.replace(/[\n\r]+/g, ' ').trim();
-                // Try to extract just the name? "© 2024 Name." -> "Name"
-                // Match regex "© [Year] [Name]"
                 const match = cleanText.match(/©\s*\d{4}\s*(.*?)(\.|$)/);
                 if (match && match[1]) {
                     detectedCompany.value = match[1].replace(/All rights reserved/i, '').trim();
@@ -283,6 +300,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 companyFound = true;
                 break;
+            }
+        }
+
+        // 2. Try "By [Name]" pattern (common in footers/sidebars like "by Ichsan Labs")
+        if (!companyFound) {
+            // Traverse all footer text or sidebar text for "by"
+            const allTextEls = doc.querySelectorAll('footer *, .sidebar-footer *, .sidebar *, .panel-footer *');
+            for (let el of allTextEls) {
+                // Avoid empty or huge blocks
+                if (el.children.length > 0) continue;
+
+                const text = el.innerText.trim();
+                if (text.toLowerCase().startsWith('by ') && text.length < 40) {
+                    let extracted = text.substring(3).trim(); // Remove "by "
+                    detectedCompany.value = extracted;
+                    companyFound = true;
+                    break;
+                }
+            }
+        }
+
+        // 3. Fallback: Search for specific user request "ichsan labs" if it appears anywhere relevant
+        if (!companyFound) {
+            const bodyText = doc.body.innerText.toLowerCase();
+            if (bodyText.includes('ichsan labs')) {
+                detectedCompany.value = "Ichsan Labs";
+                companyFound = true;
             }
         }
 
@@ -317,44 +361,68 @@ document.addEventListener('DOMContentLoaded', () => {
         if (brandName) {
             const currentDetected = detectedBrandName.value;
             let replaced = false;
-            if (currentDetected && currentDetected !== "Not detected") {
-                const allElements = doc.querySelectorAll('*');
+
+            // Try precise replacement if we detected something valid
+            if (currentDetected && currentDetected !== "Not detected" && currentDetected !== "Error scanning") {
+                const allElements = doc.querySelectorAll('h1, h2, .brand, .navbar-brand, .logo-text, .sidebar-brand span, a');
                 for (let el of allElements) {
-                    // SAFETY FIX: Use textContent instead of innerText for broader compatibility (SVGs etc)
-                    if (el.children.length === 0 && el.textContent && el.textContent.includes(currentDetected)) {
-                        if (el.textContent.trim() === currentDetected.trim()) {
-                            el.textContent = brandName;
-                            replaced = true;
-                        }
+                    // Strict content matching to avoid replacing random text
+                    if (el.textContent.trim() === currentDetected.trim()) {
+                        el.textContent = brandName;
+                        replaced = true;
                     }
                 }
             }
+
+            // Broad fallback if precise replacement failed
             if (!replaced) {
-                const candidates = doc.querySelectorAll('.navbar-brand, .brand, .logo, h1, .brand-name, .sidebar-brand');
+                const candidates = doc.querySelectorAll('.navbar-brand, .brand, .logo, h1, .brand-name, .sidebar-brand, .site-title');
                 candidates.forEach(el => {
+                    // Replce if it looks like a title (short text)
                     if (el.textContent && el.textContent.length < 50 && el.textContent.length > 0) el.textContent = brandName;
                 });
             }
             doc.title = brandName;
         }
 
-        // 2. Slogan, Logo, Company (Same as before...)
+        // 2. Slogan Replacement
         const slogan = sloganInput.value;
         if (slogan) {
-            const potentialSlogans = doc.querySelectorAll('.slogan, .subtitle, p.description, .tagline');
-            potentialSlogans.forEach(el => { if (el.textContent) el.textContent = slogan; });
+            // Enhanced selector list matching detection
+            const potentialSlogans = doc.querySelectorAll('.slogan, .subtitle, p.description, .tagline, .sidebar-header p, .sidebar-header small, header p, .hero-text p');
+            potentialSlogans.forEach(el => {
+                // Only replace if it contains text, avoids emptying structural divs
+                if (el.innerText && el.innerText.trim().length > 0) {
+                    el.innerText = slogan;
+                }
+            });
         }
+
+        // 3. Logo Replacement
         const logoUrl = logoUrlInput.value;
         if (logoUrl) {
-            const logoImgs = doc.querySelectorAll('.logo img, .brand img, img.logo, header img, .sidebar-header img, img.brand-logo');
-            logoImgs.forEach(img => img.src = logoUrl);
+            // Enhanced selector list matching detection + common patterns
+            const logoImgs = doc.querySelectorAll('.logo img, .brand img, img.logo, header img, .sidebar-header img, img.brand-logo, .navbar-brand img');
+            logoImgs.forEach(img => {
+                img.src = logoUrl;
+                // Also update srcset if it exists to prevent browser preferring old image
+                if (img.srcset) img.removeAttribute('srcset');
+            });
         }
+
+        // 4. Company/Footer Replacement
         const companyName = companyNameInput.value;
         if (companyName) {
-            const footerCopyright = doc.querySelectorAll('footer p, .copyright, .footer-text, .footer-copyright');
+            const footerCopyright = doc.querySelectorAll('footer p, .copyright, .footer-text, .footer-copyright, .sidebar-footer, footer div, small');
             footerCopyright.forEach(el => {
-                if (el.textContent && (el.textContent.includes('©') || el.textContent.toLowerCase().includes('copyright'))) {
+                const text = el.textContent.toLowerCase();
+                // Replace "Copyright" lines
+                if (text.includes('©') || text.includes('copyright')) {
                     el.textContent = `© ${new Date().getFullYear()} ${companyName}. All rights reserved.`;
+                }
+                // Replace "by [Name]" lines
+                else if (text.trim().startsWith('by ')) {
+                    el.textContent = `by ${companyName}`;
                 }
             });
         }
