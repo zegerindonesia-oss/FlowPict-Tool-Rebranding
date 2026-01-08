@@ -33,52 +33,60 @@ document.addEventListener('DOMContentLoaded', () => {
     const themePresetInput = document.getElementById('themePreset'); // New Theme Selector
 
     // Theme Configurations
+    // Theme Configurations (Strictly Matched / Senada)
     const themeConfigs = {
         modernPurple: {
-            primary: '#8B5CF6',
-            sidebar: '#0f172a',
+            primary: '#8B5CF6',   // Violet 500
+            sidebar: '#2e1065',   // Violet 950 (Deep Purple) - Matching
             mode: 'gradient',
-            bg: 'gradient', // light gradient
+            bg: 'gradient',
             font: 'Inter, sans-serif'
         },
         oceanBlue: {
-            primary: '#0EA5E9',
-            sidebar: '#0c4a6e',
+            primary: '#0EA5E9',   // Sky 500
+            sidebar: '#082f49',   // Sky 950 (Deep Blue) - Matching
             mode: 'gradient',
             bg: 'light',
             font: 'Roboto, sans-serif'
         },
         classicBrown: {
-            primary: '#8D6E63',
-            sidebar: '#3E2723',
+            primary: '#A1887F',   // Brown 300
+            sidebar: '#3E2723',   // Brown 900 (Deep Coffee) - Matching
             mode: 'solid',
             bg: 'light',
-            font: 'Georgia, serif' // Fallback for "Classic" look
+            font: 'Georgia, serif'
         },
         forestGreen: {
-            primary: '#10B981',
-            sidebar: '#064E3B',
+            primary: '#10B981',   // Emerald 500
+            sidebar: '#022c22',   // Emerald 950 (Deep Green) - Matching
             mode: 'gradient',
             bg: 'light',
             font: 'Inter, sans-serif'
         },
         sunsetOrange: {
-            primary: '#F97316',
-            sidebar: '#431407',
+            primary: '#F97316',   // Orange 500
+            sidebar: '#431407',   // Orange 950 (Deep Burnt Orange) - Matching
             mode: 'gradient',
             bg: 'light',
             font: 'Poppins, sans-serif'
         },
         crimsonRed: {
-            primary: '#DC2626',
-            sidebar: '#450a0a',
+            primary: '#EF4444',   // Red 500
+            sidebar: '#450a0a',   // Red 950 (Deep Red) - Matching
             mode: 'solid',
             bg: 'light',
             font: 'Inter, sans-serif'
         },
+        midnightTeal: {
+            primary: '#14b8a6',  // Teal 500
+            sidebar: '#042f2e',  // Teal 950
+            mode: 'gradient',
+            bg: 'dark',
+            font: 'Inter, sans-serif'
+        },
         darkStealth: {
-            primary: '#94a3b8', // Muted slate
-            sidebar: '#000000',
+            primary: '#94a3b8',   // Slate 400
+            sidebar: '#020617',   // Slate 950
             mode: 'solid',
             bg: 'dark',
             font: 'Courier New, monospace'
