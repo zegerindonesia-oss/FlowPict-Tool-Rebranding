@@ -243,15 +243,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const doc = parser.parseFromString(html, 'text/html');
 
         // Get Current Theme Config
-        const selectedThemeKey = themePresetInput ? themePresetInput.value : 'modernPurple';
-        // Fallback to modernPurple if key invalid (e.g. 'custom' removed)
+        const selectedThemeKey = themePresetInput ? themePresetInput.value : 'original';
+
+        // 0. If Original, return cleaned HTML (maybe allow text edits? User said "Asli munculnya", implies raw).
+        // However, usually tools allow renaming even on original. Let's allow renaming but SKIP style injection.
+        const isOriginal = selectedThemeKey === 'original';
         const theme = themeConfigs[selectedThemeKey] || themeConfigs['modernPurple'];
 
-        // --- A. Content Replacement (Brand, Slogan, etc.) ---
-        // (Existing logic kept but optimized)
+        // --- A. Content Replacement (Rebranding) ---
+        // (Runs for ALL themes including Original, unless user wants pure raw)
+        // User said "Apply Customisation" transforms it. 
+        // Let's assume text branding applies always, but styling only on theme.
 
         // 1. App Name
-        const brandName = brandNameInput.value; // Using brandNameInput.value as per original context
+        const brandName = brandNameInput.value;
         if (brandName) {
             const currentDetected = detectedBrandName.value;
             let replaced = false;
@@ -275,22 +280,18 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.title = brandName;
         }
 
-        // 2. Slogan
-        const slogan = sloganInput.value; // Using sloganInput.value as per original context
+        // 2. Slogan, Logo, Company (Same as before...)
+        const slogan = sloganInput.value;
         if (slogan) {
             const potentialSlogans = doc.querySelectorAll('.slogan, .subtitle, p.description, .tagline');
             potentialSlogans.forEach(el => el.innerText = slogan);
         }
-
-        // 3. Logo
-        const logoUrl = logoUrlInput.value; // Using logoUrlInput.value as per original context
+        const logoUrl = logoUrlInput.value;
         if (logoUrl) {
             const logoImgs = doc.querySelectorAll('.logo img, .brand img, img.logo, header img, .sidebar-header img, img.brand-logo');
             logoImgs.forEach(img => img.src = logoUrl);
         }
-
-        // 4. Company Name
-        const companyName = companyNameInput.value; // Using companyNameInput.value as per original context
+        const companyName = companyNameInput.value;
         if (companyName) {
             const footerCopyright = doc.querySelectorAll('footer p, .copyright, .footer-text, .footer-copyright');
             footerCopyright.forEach(el => {
@@ -300,141 +301,123 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // --- B. CSS Branding Injection (The Core "Engine") ---
-        const styleTag = doc.createElement('style');
+        // --- B. CSS Branding Injection (SKIPPED IF ORIGINAL) ---
+        if (!isOriginal) {
+            const styleTag = doc.createElement('style');
 
-        // 1. Define Variables
-        let css = `
-            :root {
-                --theme-primary: ${theme.primary} !important;
-                --theme-primary-dark: ${theme.primaryDark} !important;
-                --theme-sidebar: ${theme.sidebar} !important;
-                --theme-sidebar-text: ${theme.sidebarText} !important;
-                --theme-accent: ${theme.accent} !important;
-                --theme-surface: ${theme.surface} !important;
-                --theme-font: ${theme.font} !important;
+            // 1. Define Variables
+            let css = `
+                :root {
+                    --theme-primary: ${theme.primary} !important;
+                    --theme-primary-dark: ${theme.primaryDark} !important;
+                    --theme-sidebar: ${theme.sidebar} !important;
+                    --theme-sidebar-text: ${theme.sidebarText} !important;
+                    --theme-accent: ${theme.accent} !important;
+                    --theme-surface: ${theme.surface} !important;
+                    --theme-font: ${theme.font} !important;
+                }
+            `;
+
+            // 2. Button Styling (Aggressive Overrides)
+            // Targeting [class*="btn"], [class*="button"] to catch 'btn-primary', 'custom-button', etc.
+            if (theme.mode === 'gradient') {
+                css += `
+                    button, input[type="submit"], .btn, [class*="btn-"], [class*="button"] {
+                        background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-dark) 100%) !important;
+                        background-color: var(--theme-primary) !important; /* Fallback */
+                        border: none !important;
+                        color: white !important;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+                    }
+                    /* Exclude outline/ghost buttons if needed? For now, we want aggressive Senada matching */
+                    
+                    button:hover, .btn:hover, [class*="btn-"]:hover {
+                        opacity: 0.9 !important;
+                        transform: translateY(-1px) !important;
+                    }
+                `;
+            } else {
+                css += `
+                    button, input[type="submit"], .btn, [class*="btn-"], [class*="button"] { 
+                        background: var(--theme-primary) !important; 
+                        color: white !important;
+                        border: none !important;
+                    }
+                `;
             }
-        `;
 
-        // 2. Button Styling
-        if (theme.mode === 'gradient') {
+            // 3. Sidebar / Navigation Styling (Attribute Selectors)
             css += `
-                /* Gradient Buttons */
-                .btn-primary, button.primary, .btn-main, button[type="submit"], .action-btn { 
-                    background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-dark) 100%) !important; 
-                    border: none !important;
+                nav, aside, .sidebar, [class*="sidebar"], [class*="navbar"], [class*="drawer"], [class*="menu"] {
+                    background: var(--theme-sidebar) !important;
+                    background-color: var(--theme-sidebar) !important;
+                    color: var(--theme-sidebar-text) !important;
+                    border-right: 1px solid rgba(255,255,255,0.05) !important;
+                }
+                
+                /* Links in Sidebar */
+                nav a, aside a, [class*="sidebar"] a, [class*="menu"] a, .nav-item {
+                    color: rgba(255,255,255, 0.7) !important; 
+                }
+                
+                nav a:hover, aside a:hover, [class*="sidebar"] a:hover {
+                    background: rgba(255,255,255, 0.1) !important;
                     color: white !important;
-                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
                 }
-                .btn-primary:hover, button.primary:hover {
-                    opacity: 0.9 !important;
-                    transform: translateY(-1px) !important;
+                
+                /* Active States */
+                .active, [class*="active"] {
+                    background-color: rgba(255,255,255, 0.15) !important;
+                    color: white !important;
                 }
-                /* Text Gradients */
-                .text-gradient, h1.title, .brand-text {
-                     background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-dark) 100%) !important; 
-                     -webkit-background-clip: text !important;
-                     -webkit-text-fill-color: transparent !important;
-                }
-             `;
-        } else {
+            `;
+
+            // 4. Global Typography & Headings
             css += `
-                /* Solid Buttons */
-                .btn-primary, button.primary, .btn-main, button[type="submit"] { 
-                    background: var(--theme-primary) !important; 
+                body { 
+                    font-family: var(--theme-font) !important; 
+                    background-color: var(--theme-surface) !important;
+                }
+                
+                h1, h2, h3, h4, h5, h6, [class*="heading"], [class*="title"] {
+                    color: var(--theme-primary-dark) !important;
+                }
+                
+                a { color: var(--theme-primary) !important; }
+                
+                /* Explicitly target Tailwind-like color classes to OVERRIDE them */
+                [class*="text-"] { color: inherit; } /* Reset */
+                
+                .text-primary, [class*="text-blue"], [class*="text-green"], [class*="text-teal"], [class*="text-indigo"], [class*="text-purple"] {
+                    color: var(--theme-primary) !important;
+                }
+                
+                [class*="bg-blue"], [class*="bg-green"], [class*="bg-teal"], [class*="bg-indigo"] {
+                    background-color: var(--theme-primary) !important;
+                }
+                
+                /* Badges */
+                [class*="badge"], [class*="label"], [class*="tag"] {
+                    background: var(--theme-primary) !important;
                     color: white !important;
                 }
-             `;
+            `;
+
+            // 5. Card/Container Styling
+            css += `
+                [class*="card"], [class*="panel"], [class*="box"], .container-white {
+                    border-radius: 12px !important;
+                }
+                /* Inputs */
+                input:focus, select:focus, textarea:focus {
+                    border-color: var(--theme-primary) !important;
+                    box-shadow: 0 0 0 3px rgba(var(--theme-primary), 0.2) !important;
+                }
+            `;
+
+            styleTag.innerHTML = css;
+            doc.head.appendChild(styleTag);
         }
-
-        // 3. Sidebar / Navigation Styling (Deep Override)
-        css += `
-            nav, .sidebar, aside, .drawer, .navbar-vertical, .menu-sidebar {
-                background: var(--theme-sidebar) !important;
-                background-color: var(--theme-sidebar) !important;
-                color: var(--theme-sidebar-text) !important;
-                border-right: 1px solid rgba(255,255,255,0.05) !important;
-            }
-            
-            /* Sidebar Links */
-            nav a, .sidebar a, .menu-item, .nav-item {
-                color: rgba(255,255,255, 0.7) !important; 
-                transition: all 0.2s ease !important;
-            }
-            
-            nav a:hover, .sidebar a:hover, .menu-item:hover, nav a.active, .sidebar a.active, .nav-item.active {
-                background: rgba(255,255,255, 0.1) !important;
-                color: white !important;
-                border-radius: 8px !important;
-            }
-            
-            /* Sidebar HEADERS (e.g. "Produk & Promosi", "Edit & Gabung") */
-            .sidebar-header, .nav-section-title, .menu-title, .sidebar h1, .sidebar h2, .sidebar h3, .sidebar h4, .sidebar h5, .sidebar span.text-muted, .sidebar small {
-                color: rgba(255,255,255, 0.5) !important;
-                text-transform: uppercase !important;
-                letter-spacing: 0.05em !important;
-            }
-        `;
-
-        // 4. Global Typography & Headings
-        css += `
-            body { 
-                font-family: var(--theme-font) !important; 
-                background-color: var(--theme-surface) !important;
-            }
-            
-            h1, h2, h3, h4, .h1, .h2, .h3, .heading {
-                color: var(--theme-primary-dark) !important; /* Force colored headers */
-            }
-            
-            a { color: var(--theme-primary) !important; }
-            
-            /* Override Utility Classes (common in Tailwind/Bootstrap) */
-            .text-primary, .text-blue-600, .text-green-600, .text-indigo-600, .text-purple-600 {
-                color: var(--theme-primary) !important;
-            }
-            
-            .bg-primary, .bg-blue-600, .bg-green-600, .bg-indigo-600 {
-                background-color: var(--theme-primary) !important;
-            }
-            
-            .border-primary {
-                border-color: var(--theme-primary) !important;
-            }
-            
-            /* Badges / Labels (e.g. "New") */
-            .badge, .label, span.new, span.hot {
-                background: var(--theme-primary) !important;
-                color: white !important;
-            }
-        `;
-
-        // 5. Special Elements (Inputs, Cards)
-        css += `
-            input:focus, select:focus, textarea:focus {
-                border-color: var(--theme-primary) !important;
-                box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2) !important; /* Fix shadow color later? Just generic tint */
-            }
-            
-            .card, .panel, .box {
-                border-top: 4px solid var(--theme-primary) !important; /* Nice touch for cards */
-                border-radius: 12px !important;
-            }
-        `;
-
-        // Layout overrides (kept from original, but might need adjustment with new theme vars)
-        if (navPositionInput.value === 'left') {
-            css += `body { display: flex !important; flex-direction: row !important; }
-                    nav, header, .sidebar { width: 260px !important; height: 100vh !important; position: sticky !important; top: 0 !important; flex-direction: column !important; border-right: 1px solid rgba(0,0,0,0.1); }
-                    main, .content { flex: 1 !important; }`;
-        } else if (navPositionInput.value === 'right') {
-            css += `body { display: flex !important; flex-direction: row-reverse !important; }
-                    nav, header, .sidebar { width: 260px !important; height: 100vh !important; position: sticky !important; top: 0 !important; flex-direction: column !important; border-left: 1px solid rgba(0,0,0,0.1); }
-                    main, .content { flex: 1 !important; }`;
-        }
-
-        styleTag.innerHTML = css;
-        doc.head.appendChild(styleTag);
 
         // --- C. Nav Renaming ---
         if (currentNavItems.length > 0) {
