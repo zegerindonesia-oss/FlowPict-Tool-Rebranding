@@ -567,18 +567,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     color: #FFFFFF !important;
                 }
 
-                /* Sidebar Text Elements - Force White/Light (No Gray) */
-                .sidebar h1, .sidebar h2, .sidebar h3, .sidebar h4, .sidebar h5, .sidebar h6,
-                .sidebar p, .sidebar span, .sidebar strong, .sidebar i, .sidebar div, 
-                .sidebar li, .sidebar a, .sidebar label, .sidebar small,
-                .nav-label, .sidebar-heading, .menu-title {
+                /* Sidebar Text Elements - NUCLEAR OPTION: FORCE EVERYTHING WHITE */
+                /* This fixes the "Edit & Gabung" gray text issue */
+                .sidebar *, .sidebar-wrapper *, aside *, .nav-sidebar * {
                     color: #FFFFFF !important;
-                    opacity: 1 !important; /* Remove opacity dimming */
+                    opacity: 1 !important;
+                    text-shadow: none !important;
                 }
                 
-                /* Specific overrides for any remaining gray elements */
-                .sidebar .text-muted, .sidebar .text-gray, .sidebar .text-secondary {
-                    color: rgba(255,255,255,0.85) !important;
+                /* Exceptions for Badges (Backgrounds) */
+                /* Only reset background/border, keep text white */
+                .sidebar .badge, .sidebar .label, .sidebar .tag {
+                     /* Don't override background-color here, just text */
                 }
 
                 /* Sidebar Links & Buttons: CLEAN STYLE */
