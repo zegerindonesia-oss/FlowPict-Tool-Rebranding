@@ -169,11 +169,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Strategy B: If no explicit selector, look for the first H1 or significant H2 in a sidebar/header
+        // Strategy B: If no explicit selector, look for the first H1 or significant H2
         if (!brandFound) {
             const headings = doc.querySelectorAll('h1, h2');
             for (let h of headings) {
-                // Check if it's likely a title (not too long, usually at top)
                 if (h.innerText.trim().length > 2 && h.innerText.trim().length < 30) {
                     detectedBrandName.value = h.innerText.trim();
                     brandFound = true;
@@ -182,11 +181,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Final Fallback
-        if (!brandFound && doc.title) {
-            detectedBrandName.value = doc.title;
-        } else if (!brandFound) {
+        // AUTO-FILL Brand Input
+        if (brandFound) {
+            brandNameInput.value = detectedBrandName.value;
+        } else {
             detectedBrandName.value = "Not detected";
+            // Optional: Keep value empty or set placeholder? Keep value empty.
         }
 
         // --- Detect Slogan ---
@@ -200,7 +200,6 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let sel of sloganSelectors) {
             const el = doc.querySelector(sel);
             if (el && el.innerText.trim().length > 0 && el.innerText.trim().length < 60) {
-                // Filter out common UI text if it looks like a slogan
                 if (!el.innerText.toLowerCase().includes('admin') && !el.innerText.toLowerCase().includes('menu')) {
                     detectedSlogan.value = el.innerText.trim();
                     sloganFound = true;
@@ -208,14 +207,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
-        if (!sloganFound) detectedSlogan.value = "Not detected";
+
+        // AUTO-FILL Slogan Input
+        if (sloganFound) {
+            sloganInput.value = detectedSlogan.value;
+        } else {
+            detectedSlogan.value = "Not detected";
+        }
 
         // --- Detect Logo ---
         const logoImg = doc.querySelector('.brand img, .logo img, .navbar-brand img, header img, .sidebar-header img, img.logo');
         if (logoImg && logoImg.src) {
             detectedLogo.value = "Found image";
             detectedLogo.title = logoImg.src;
-            if (!logoUrlInput.value) logoUrlInput.placeholder = "Paste new URL";
+            if (!logoUrlInput.value) logoUrlInput.value = logoImg.src; // Auto-fill URL
         } else {
             detectedLogo.value = "Not detected";
         }
@@ -226,15 +231,27 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let el of footerCopyright) {
             const text = el.innerText.toLowerCase();
             if (text.includes('©') || text.includes('copyright') || text.includes('by ')) {
-                // Extract just the name if possible, or just show the whole string
                 let cleanText = el.innerText.replace(/[\n\r]+/g, ' ').trim();
-                if (cleanText.length > 50) cleanText = cleanText.substring(0, 47) + "...";
-                detectedCompany.value = cleanText;
+                // Try to extract just the name? "© 2024 Name." -> "Name"
+                // Match regex "© [Year] [Name]"
+                const match = cleanText.match(/©\s*\d{4}\s*(.*?)(\.|$)/);
+                if (match && match[1]) {
+                    detectedCompany.value = match[1].replace(/All rights reserved/i, '').trim();
+                } else {
+                    if (cleanText.length > 50) cleanText = cleanText.substring(0, 47) + "...";
+                    detectedCompany.value = cleanText;
+                }
                 companyFound = true;
                 break;
             }
         }
-        if (!companyFound) detectedCompany.value = "Not detected";
+
+        // AUTO-FILL Company Input
+        if (companyFound) {
+            companyNameInput.value = detectedCompany.value;
+        } else {
+            detectedCompany.value = "Not detected";
+        }
     }
 
     // 2. Generate Modified HTML (The "Rebranding" Engine)
@@ -493,14 +510,19 @@ document.addEventListener('DOMContentLoaded', () => {
             row.className = 'comparison-row';
             row.style.marginBottom = "8px";
 
+            // Pre-fill the input with the original text for easy editing
             row.innerHTML = `
                 <div class="dual-input">
                     <input type="text" class="detected-input" value="${text}" readonly title="Original Label">
                     <i class="fa-solid fa-arrow-right"></i>
-                    <input type="text" id="nav-item-${count}" placeholder="Rename '${text}'">
+                    <input type="text" id="nav-item-${count}" value="${text}" placeholder="Rename '${text}'">
                 </div>
-             `;
-            row.querySelector('input:not([readonly])').addEventListener('input', updatePreview);
+            `;
+            // Add listener to the NEW input
+            const inputField = row.querySelector(`#nav-item-${count}`);
+            if (inputField) {
+                inputField.addEventListener('input', updatePreview);
+            }
 
             navEditor.appendChild(row);
             count++;
