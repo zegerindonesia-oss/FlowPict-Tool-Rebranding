@@ -356,9 +356,33 @@ document.addEventListener('DOMContentLoaded', () => {
     applyBtn.addEventListener('click', () => {
         // Just trigger update again (visual feedback)
         updatePreview();
-        applyBtn.innerText = 'Applied!';
         applyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Applied!';
         fileNameDisplay.style.color = '#1e293b';
+        setTimeout(() => {
+            applyBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Apply Customisation';
+        }, 1500);
+    });
+
+    // Copy Code
+    if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+            const finalCode = generateModifiedHtml(htmlInput.value);
+            navigator.clipboard.writeText(finalCode).then(() => {
+                copyBtn.innerText = 'Copied!';
+                copyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+                setTimeout(() => {
+                    copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy Code';
+                }, 2000);
+            });
+        });
+    }
+
+    // File Upload Handler
+    htmlUpload.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        fileNameDisplay.innerText = file.name;
 
         // Show loading state
         previewFrame.srcdoc = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;color:#64748b;">Processing file...</div>';
