@@ -454,77 +454,67 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            copysToUpdate.forEach(n => {
-                let text = n.nodeValue;
+            // Strategy: Element-Level Search for Footer (Handles fragmented nodes)
+            // We search for the container, then act on its text/HTML
+            const footerContainers = doc.querySelectorAll('footer, .footer, .copyright, .sidebar-footer, small, .legal');
 
-                // Strategy A: Targeted Regex Replacement (Case-Insensitive)
-                // This handles "Sulap Foto" vs "sulap foto" mismatches
-                if (currentDetectedBrand && currentDetectedBrand !== "Not detected" && brandName) {
-                    // Escape regex special chars in detected name just in case
-                    const escaped = currentDetectedBrand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    const re = new RegExp(escaped, 'gi');
-                    text = text.replace(re, brandName);
-                }
+            footerContainers.forEach(container => {
+                // Safety Check: Don't nuuke complex sub-trees (but footer containers are usually safe to traverse)
+                // We'll use a specific walker for the footer context
+                const footerWalker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+                let fNode;
+                while (fNode = footerWalker.nextNode()) {
+                    let fText = fNode.nodeValue;
 
-                if (currentDetectedSlogan && currentDetectedSlogan !== "Not detected" && slogan) {
-                    const escaped = currentDetectedSlogan.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    const re = new RegExp(escaped, 'gi');
-                    text = text.replace(re, slogan);
-                }
-
-                // Strategy B: Structural Reconstruction (The "Big Hammer")
-                // If text looks like "© 2025. [Stuff] by [Company]", and we have inputs, just rebuild it.
-                // This ensures we don't end up with mixed old/new content if detection failed.
-                const patterns = [
-                    // Pattern: © [Year] [Middle] by [Suffix]
-                    /([©|Copyright].*?\d{4}.*?)\s+(.*?)\s+(by\s+.*)/i
-                ];
-
-                for (let pat of patterns) {
-                    const match = text.match(pat);
-                    if (match) {
-                        // match[1] = "© 2025."
-                        // match[2] = "Sulap Foto v3.6 pro" (The Middle)
-                        // match[3] = "by Ichsan Labs"
-
-                        // If we successfully replaced brand/slogan in Strategy A, match[2] might already be "FlowPict Test".
-                        // But if Strategy A failed (detection mismatch), match[2] is still "Sulap Foto...".
-
-                        let middle = match[2];
-                        // Double check: if middle still contains old detected brand, replace it broadly
-                        if (currentDetectedBrand && middle.toLowerCase().includes(currentDetectedBrand.toLowerCase())) {
-                            middle = middle.replace(new RegExp(currentDetectedBrand, 'gi'), brandName);
-                        }
-                        if (currentDetectedSlogan && middle.toLowerCase().includes(currentDetectedSlogan.toLowerCase())) {
-                            middle = middle.replace(new RegExp(currentDetectedSlogan, 'gi'), slogan);
-                        }
-
-                        // Reconstruct: Prefix + Middle + "by " + NewCompany
-                        // Note: We force the company part because we know the user wants 'by [Company]'
-                        const prefix = match[1];
-                        text = `${prefix} ${middle} by ${companyName}`;
-                        break; // Stop after successful reconstruction
+                    // 1. Explicit Replacement of "Ichsan Labs" (User reported mismatch)
+                    // Because detection might have failed or been exact-match only
+                    if (/ichsan\s*labs?/i.test(fText)) {
+                        fText = fText.replace(/ichsan\s*labs?/gi, companyName);
                     }
-                }
 
-                // Strategy C: Simple "by" replacement fallback (if structure didn't match perfectly)
-                // Only runs if we haven't rebuilt it yet (heuristic check)
-                if (!text.includes(companyName)) {
-                    const lower = text.toLowerCase();
-                    if (lower.includes('by ')) {
-                        const match = text.match(/by\s+/i);
-                        if (match) {
-                            const index = match.index;
-                            const prefix = text.substring(0, index + match[0].length);
-                            text = prefix + companyName;
+                    // 2. Explicit Replacement of "Sulap Foto" (App Name) in Footer
+                    if (/sulap\s*foto/i.test(fText) && brandName) {
+                        fText = fText.replace(/sulap\s*foto/gi, brandName);
+                    }
+
+                    // 3. Explicit Replacement of "v3.6 pro" (Slogan) in Footer
+                    if (/v\s*3\.6\s*pro/i.test(fText) && slogan) {
+                        fText = fText.replace(/v\s*3\.6\s*pro/gi, slogan);
+                    }
+
+                    // 4. Standard Detected Brand/Slogan Replace (if not caught above)
+                    if (currentDetectedBrand && currentDetectedBrand !== "Not detected" && brandName) {
+                        const escBrand = currentDetectedBrand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        fText = fText.replace(new RegExp(escBrand, 'gi'), brandName);
+                    }
+
+                    // 5. Structure Fix: "by [Company]" 
+                    // If we see "by [Company]", ensure [Company] is the new one
+                    if (fText.toLowerCase().includes('by ') && companyName) {
+                        // Careful not to double replace if we just did it in step 1
+                        if (!fText.includes(companyName)) {
+                            // This is tricky if "by" and "Ichsan" are split.
+                            // But usually they are in the same text node if plain text.
+                            // If not, Step 1 helps.
+                            // If "by" matches but company not found, maybe append?
+                            // No, unsafe. Assume Step 1 covers the explicit "Ichsan Labs" case.
                         }
                     }
-                }
 
-                n.nodeValue = text;
+                    fNode.nodeValue = fText;
+                }
             });
 
-            // Remove risky querySelector logic for footer
+            // Fallback: If "Ichsan Labs" wasn't found in any text node (maybe inside a Link's innerText?)
+            // We search ALL links in footer containers
+            footerContainers.forEach(container => {
+                const links = container.querySelectorAll('a');
+                links.forEach(link => {
+                    if (/ichsan\s*labs?/i.test(link.innerText)) {
+                        link.innerText = companyName;
+                    }
+                });
+            });
         }
 
         // --- B. CSS Branding Injection (SKIPPED IF ORIGINAL) ---
