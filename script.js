@@ -361,8 +361,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const nodesToUpdate = [];
 
             while (node = walker.nextNode()) {
-                // Skip if parent is script or style
-                if (node.parentNode && (node.parentNode.tagName === 'SCRIPT' || node.parentNode.tagName === 'STYLE')) continue;
+                const parent = node.parentNode;
+                if (!parent) continue;
+                const tag = parent.tagName;
+
+                // Safety: Skip script, style, and code-related blocks
+                if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEXTAREA' || tag === 'CODE' || tag === 'PRE') continue;
 
                 if (node.nodeValue.includes(safeSearch)) {
                     nodesToUpdate.push(node);
@@ -559,7 +563,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        return doc.documentElement.outerHTML;
+        // CRITICAL FIX: Preserve DOCTYPE
+        return "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
     }
 
     // 3. Extract Nav Items (Improved x3)
