@@ -400,19 +400,33 @@ document.addEventListener('DOMContentLoaded', () => {
             htmlInput.value = content;
 
             // Clear inputs to allow re-detection when new file is uploaded
-            // Reset "Detected" fields
-            detectedBrandName.value = "Scanning...";
-            detectedSlogan.value = "Scanning...";
-            detectedLogo.value = "Scanning...";
-            detectedCompany.value = "Scanning...";
-            brandNameInput.value = '';
-            sloganInput.value = '';
-            logoUrlInput.value = '';
-            companyNameInput.value = '';
+            try {
+                detectedBrandName.value = "Scanning...";
+                detectedSlogan.value = "Scanning...";
+                detectedLogo.value = "Scanning...";
+                detectedCompany.value = "Scanning...";
+                brandNameInput.value = '';
+                sloganInput.value = '';
+                logoUrlInput.value = '';
+                companyNameInput.value = '';
+            } catch (resetErr) { console.warn("Reset error", resetErr); }
 
-            // Run logic
-            detectBranding(content);
-            extractNavItems();
+            // Run logic with safety
+            try {
+                detectBranding(content);
+            } catch (err) {
+                console.error("Branding detection failed:", err);
+                detectedBrandName.value = "Detection failed";
+            }
+
+            try {
+                extractNavItems();
+            } catch (err) {
+                console.error("Nav extraction failed:", err);
+                navEditor.innerHTML = '<div class="empty-state">Error loading navigation</div>';
+            }
+
+            // Always update preview even if detection failed
             updatePreview();
         };
         reader.readAsText(file);
