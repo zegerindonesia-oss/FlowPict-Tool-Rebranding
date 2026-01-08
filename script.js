@@ -68,234 +68,235 @@ document.addEventListener('DOMContentLoaded', () => {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
-        // Detect Brand Name
-        const brandCandidates = doc.querySelectorAll('.navbar-brand, .brand, .logo, h1, .wrapper-logo, .brand-name, .logo-text, a.logo');
-        let foundBrand = false;
+        // --- Detect Brand Name ---
+        // Priority: 1. Semantic classes 2. H1/H2 3. Document Title
+        let brandFound = false;
 
-        for (let el of brandCandidates) {
-            if (el.innerText && el.innerText.trim().length > 0 && el.innerText.trim().length < 30) {
+        // Strategy A: Explicit Selectors
+        const brandSelectors = [
+            '.navbar-brand', '.brand', '.logo', '.logo-text', '.brand-name',
+            '.sidebar-header h1', '.sidebar-header h2', '.sidebar-header h3',
+            'header h1', 'header h2', '.app-name', '.site-title'
+        ];
+
+        for (let sel of brandSelectors) {
+            const el = doc.querySelector(sel);
+            if (el && el.innerText.trim().length > 0 && el.innerText.trim().length < 40) {
                 detectedBrandName.value = el.innerText.trim();
-                foundBrand = true;
+                brandFound = true;
                 break;
             }
         }
 
-        // Fallback: Document Title
-        if (!foundBrand && doc.title) {
+        // Strategy B: If no explicit selector, look for the first H1 or significant H2 in a sidebar/header
+        if (!brandFound) {
+            const headings = doc.querySelectorAll('h1, h2');
+            for (let h of headings) {
+                // Check if it's likely a title (not too long, usually at top)
+                if (h.innerText.trim().length > 2 && h.innerText.trim().length < 30) {
+                    detectedBrandName.value = h.innerText.trim();
+                    brandFound = true;
+                    break;
+                }
+            }
+        }
+
+        // Final Fallback
+        if (!brandFound && doc.title) {
             detectedBrandName.value = doc.title;
-        } else if (!foundBrand) {
+        } else if (!brandFound) {
             detectedBrandName.value = "Not detected";
         }
 
-        // Detect Slogan
-        const sloganCandidates = doc.querySelectorAll('.slogan, .subtitle, p.description, .hero-text p');
-        let foundSlogan = false;
-        for (let el of sloganCandidates) {
-            if (el.innerText && el.innerText.trim().length > 0 && el.innerText.trim().length < 60) {
-                detectedSlogan.value = el.innerText.trim();
-                foundSlogan = true;
-                break;
+        // --- Detect Slogan ---
+        let sloganFound = false;
+        const sloganSelectors = [
+            '.slogan', '.subtitle', '.tagline', '.description',
+            '.sidebar-header p', '.sidebar-header small', '.sidebar-header span',
+            'header p', 'header small'
+        ];
+
+        for (let sel of sloganSelectors) {
+            const el = doc.querySelector(sel);
+            if (el && el.innerText.trim().length > 0 && el.innerText.trim().length < 60) {
+                // Filter out common UI text if it looks like a slogan
+                if (!el.innerText.toLowerCase().includes('admin') && !el.innerText.toLowerCase().includes('menu')) {
+                    detectedSlogan.value = el.innerText.trim();
+                    sloganFound = true;
+                    break;
+                }
             }
         }
-        if (!foundSlogan) detectedSlogan.value = "Not detected";
+        if (!sloganFound) detectedSlogan.value = "Not detected";
 
-        // Detect Logo
-        const logoImg = doc.querySelector('.brand img, .logo img, .navbar-brand img, header img, img.logo');
+        // --- Detect Logo ---
+        const logoImg = doc.querySelector('.brand img, .logo img, .navbar-brand img, header img, .sidebar-header img, img.logo');
         if (logoImg && logoImg.src) {
             detectedLogo.value = "Found image";
             detectedLogo.title = logoImg.src;
-            // Pre-fill the new logo URL input with the old one for convenience? 
-            // User requested: "muncul semua fitur saat ini dan hendak dirubah menjadi apa"
-            // So logic says: Detected = old, Input = new.
-            // But if user wants to keep it, they leave new empty.
-            if (!logoUrlInput.value) logoUrlInput.placeholder = "Paste new URL to replace";
+            if (!logoUrlInput.value) logoUrlInput.placeholder = "Paste new URL";
         } else {
             detectedLogo.value = "Not detected";
         }
 
-        // Detect Company
-        const footerCopyright = doc.querySelectorAll('footer p, .copyright, .footer-text, .footer-copyright');
-        let foundCompany = false;
+        // --- Detect Company (Footer) ---
+        const footerCopyright = doc.querySelectorAll('footer p, footer div, .copyright, .footer-text, .footer-copyright');
+        let companyFound = false;
         for (let el of footerCopyright) {
-            if (el.innerText.includes('©') || el.innerText.toLowerCase().includes('copyright')) {
-                detectedCompany.value = el.innerText.replace(/[^a-zA-Z0-9 ]/g, "").trim().substring(0, 30) + "...";
-                foundCompany = true;
+            const text = el.innerText.toLowerCase();
+            if (text.includes('©') || text.includes('copyright') || text.includes('by ')) {
+                // Extract just the name if possible, or just show the whole string
+                let cleanText = el.innerText.replace(/[\n\r]+/g, ' ').trim();
+                if (cleanText.length > 50) cleanText = cleanText.substring(0, 47) + "...";
+                detectedCompany.value = cleanText;
+                companyFound = true;
                 break;
             }
         }
-        if (!foundCompany) detectedCompany.value = "Not detected";
+        if (!companyFound) detectedCompany.value = "Not detected";
     }
 
     // 2. Generate Modified HTML (The "Rebranding" Engine)
     function generateModifiedHtml(html) {
-        // Create a DOM parser to manipulate the string as DOM
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
         // A. Apply Branding
-        // Try to find common Brand Name elements
-        const potentialBrandElements = doc.querySelectorAll('.brand, .logo, .navbar-brand, h1, .brand-name');
+        // Note: We use the *Detected* value to find the element again and replace it.
+        // This is safer than generic selectors which might miss or hit wrong things.
+
+        // 1. App Name
         if (brandNameInput.value) {
-            potentialBrandElements.forEach(el => {
-                // Heuristic: If it has text, replace it. Safe? Maybe.
-                // Better: Check if it's the *main* brand.
-                if (el.innerText.trim().length < 30) {
-                    el.innerText = brandNameInput.value;
+            const currentDetected = detectedBrandName.value;
+            let replaced = false;
+
+            // Try to find by exact text match first (High Precision)
+            if (currentDetected && currentDetected !== "Not detected") {
+                const allElements = doc.querySelectorAll('*');
+                for (let el of allElements) {
+                    // Check specific tags only to avoid replacing body text accidentally? No, brand can be anywhere.
+                    // Match exact text to avoid partial replacements in sentences
+                    if (el.children.length === 0 && el.innerText.trim() === currentDetected) {
+                        el.innerText = brandNameInput.value;
+                        replaced = true;
+                    }
                 }
-            });
-            // Also update title
+            }
+
+            // If explicit text match failed, try heuristic selectors again
+            if (!replaced) {
+                const candidates = doc.querySelectorAll('.navbar-brand, .brand, .logo, h1, .brand-name');
+                candidates.forEach(el => { if (el.innerText.length < 50) el.innerText = brandNameInput.value; });
+            }
+
             doc.title = brandNameInput.value;
         }
 
-        // Apply Slogan
+        // 2. Slogan
         if (sloganInput.value) {
-            const potentialSlogans = doc.querySelectorAll('.slogan, .tagline, .description, p.subtitle');
-            if (potentialSlogans.length > 0) {
-                potentialSlogans[0].innerText = sloganInput.value;
+            const currentDetected = detectedSlogan.value;
+            let replaced = false;
+            if (currentDetected && currentDetected !== "Not detected") {
+                const allElements = doc.querySelectorAll('p, span, small, div'); // Limit scope slightly
+                for (let el of allElements) {
+                    if (el.children.length === 0 && el.innerText.trim() === currentDetected) {
+                        el.innerText = sloganInput.value;
+                        replaced = true;
+                    }
+                }
+            }
+            if (!replaced) {
+                const potentialSlogans = doc.querySelectorAll('.slogan, .subtitle, p.description');
+                if (potentialSlogans.length > 0) potentialSlogans[0].innerText = sloganInput.value;
             }
         }
 
-        // Apply Logo
+        // 3. Logo
         if (logoUrlInput.value) {
-            const logoImgs = doc.querySelectorAll('.logo img, .brand img, img.logo');
+            const logoImgs = doc.querySelectorAll('.logo img, .brand img, img.logo, header img, .sidebar-header img');
             logoImgs.forEach(img => img.src = logoUrlInput.value);
         }
 
-        // Apply Company Name (Footer usually)
+        // 4. Company
         if (companyNameInput.value) {
-            const footerCopyright = doc.querySelectorAll('footer p, .copyright, .footer-text');
+            // Heuristic replacement
+            const footerCopyright = doc.querySelectorAll('footer p, .copyright, .footer-text, .footer-copyright');
             footerCopyright.forEach(el => {
                 if (el.innerText.includes('©') || el.innerText.toLowerCase().includes('copyright')) {
-                    // Start of regex replacement would be better, but simple append/replace for now
                     el.innerText = `© ${new Date().getFullYear()} ${companyNameInput.value}. All rights reserved.`;
                 }
             });
         }
 
-        // B. Apply Styling (Injected CSS)
+        // B. Apply Styling (Injected CSS) - No change needed here usually
         const styleTag = doc.createElement('style');
         let css = '';
-
-        // Primary Color Logic
         const pColor = primaryColorInput.value;
+
         if (colorModeInput.value === 'gradient') {
-            // Generate a complimentary gradient
-            css += `
-                :root {
-                    --primary: ${pColor};
-                    --primary-gradient: linear-gradient(135deg, ${pColor} 0%, ${adjustHue(pColor, 40)} 100%) !important;
-                }
-                .btn-primary, .primary-btn, button.primary {
-                    background: var(--primary-gradient) !important;
-                    border: none !important;
-                }
-                .text-gradient, h1 span {
-                    background: var(--primary-gradient) !important;
-                    -webkit-background-clip: text !important;
-                    -webkit-text-fill-color: transparent !important;
-                }
-             `;
+            css += `:root { --primary: ${pColor}; --primary-gradient: linear-gradient(135deg, ${pColor} 0%, ${adjustHue(pColor, 40)} 100%) !important; } 
+                     .btn-primary, .primary-btn, button.primary, .active { background: var(--primary-gradient) !important; border-color: transparent !important; color: white !important; }
+                     .text-gradient, h1 span, .brand { background: var(--primary-gradient) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; }`;
         } else {
-            css += `
-                :root { --primary: ${pColor}; --primary-gradient: ${pColor} !important; }
-                .btn-primary, .primary-btn, button.primary {
-                     background: ${pColor} !important;
-                }
-                .text-gradient {
-                     background: none !important;
-                     -webkit-text-fill-color: ${pColor} !important;
-                     color: ${pColor} !important;
-                }
-             `;
+            css += `:root { --primary: ${pColor}; --primary-gradient: ${pColor} !important; } 
+                     .btn-primary, .primary-btn, button { background: ${pColor} !important; color: white !important;}
+                     a { color: ${pColor}; }`;
         }
 
-        // Font Family
-        css += `
-            body, button, input, textarea, p, h1, h2, h3, h4, h5, h6 {
-                font-family: ${fontFamilyInput.value} !important;
-            }
-        `;
+        css += `body, button, input, h1, h2, h3, a, span { font-family: ${fontFamilyInput.value} !important; }`;
 
-        // Background
-        if (bgStyleInput.value === 'gradient') {
-            css += `body { background: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%) !important; }`;
-        } else if (bgStyleInput.value === 'dark') {
-            css += `
-                body { background: #0f172a !important; color: #f1f5f9 !important; } 
-                .card, .panel { background: #1e293b !important; color: #fff !important; } 
-             `;
-        }
+        if (bgStyleInput.value === 'gradient') css += `body { background: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%) !important; }`;
+        else if (bgStyleInput.value === 'dark') css += `body { background: #0f172a !important; color: #f1f5f9 !important; } .card, .panel, .sidebar { background: #1e293b !important; color: white; } a { color: #fff !important; }`;
 
-        // Nav Position (CSS override simulation)
+        // Layout overrides
         if (navPositionInput.value === 'left') {
-            css += `
-                /* Left Sidebar Override */
-                body { display: flex !important; flex-direction: row !important; }
-                nav, header, .navbar { 
-                    width: 250px !important; 
-                    height: 100vh !important; 
-                    position: sticky !important; 
-                    top: 0 !important; 
-                    flex-direction: column !important;
-                    border-right: 1px solid rgba(0,0,0,0.1);
-                    border-bottom: none !important;
-                    overflow-y: auto !important;
-                }
-                main, .content-wrapper, .main-content { flex: 1 !important; }
-                .nav-links, .navbar-nav { flex-direction: column !important; gap: 10px !important; }
-            `;
+            css += `body { display: flex !important; flex-direction: row !important; }
+                    nav, header, .sidebar { width: 260px !important; height: 100vh !important; position: sticky !important; top: 0 !important; flex-direction: column !important; border-right: 1px solid rgba(0,0,0,0.1); }
+                    main, .content { flex: 1 !important; }`;
         } else if (navPositionInput.value === 'right') {
-            css += `
-                /* Right Sidebar Override */
-                body { display: flex !important; flex-direction: row-reverse !important; }
-                nav, header, .navbar { 
-                    width: 250px !important; 
-                    height: 100vh !important; 
-                    position: sticky !important; 
-                    top: 0 !important; 
-                    flex-direction: column !important;
-                    border-left: 1px solid rgba(0,0,0,0.1);
-                    border-bottom: none !important;
-                    overflow-y: auto !important;
-                }
-                main, .content-wrapper, .main-content { flex: 1 !important; }
-                .nav-links, .navbar-nav { flex-direction: column !important; gap: 10px !important; }
-            `;
+            css += `body { display: flex !important; flex-direction: row-reverse !important; }
+                    nav, header, .sidebar { width: 260px !important; height: 100vh !important; position: sticky !important; top: 0 !important; flex-direction: column !important; border-left: 1px solid rgba(0,0,0,0.1); }
+                    main, .content { flex: 1 !important; }`;
         }
 
         styleTag.innerHTML = css;
         doc.head.appendChild(styleTag);
 
-        // Font imports
-        if (!doc.querySelector('link[href*="fonts.googleapis.com"]')) {
-            const fontLink = doc.createElement('link');
-            fontLink.rel = 'stylesheet';
-            fontLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Outfit:wght@400;600&family=Roboto:wght@400;500&family=Open+Sans:wght@400;600&display=swap';
-            doc.head.appendChild(fontLink);
-        }
-
         // C. Apply Nav Renaming
         if (currentNavItems.length > 0) {
-            // Re-query valid links
-            const links = doc.querySelectorAll('nav a, .navbar a, .menu a, .sidebar a');
-            let matchIndex = 0;
+            // We need to re-find the exact links.
+            // Best way: Use the 'data-original' or index we tracked.
+            // But since we are parsing fresh DOM, simple selector walk works if structure is same.
+            const links = doc.querySelectorAll('nav a, .navbar a, .menu a, .sidebar a, ul.nav li a, .nav-item a');
+            // Check if count matches to be safe?
+            let navIndex = 0;
             links.forEach(link => {
-                const cleanText = link.innerText.trim();
-                if (!cleanText || cleanText.length < 2) return;
-
-                // Find corresponding input safely
-                const input = document.getElementById(`nav-item-${matchIndex}`);
-                if (input && input.value) {
-                    link.innerText = input.value;
+                if (link.innerText.trim().length > 1) { // Same filter as extract
+                    const input = document.getElementById(`nav-item-${navIndex}`);
+                    if (input && input.value) {
+                        // Replacing innerText destroys icons usually.
+                        // Try to replace ONLY the text node if possible.
+                        const walker = document.createTreeWalker(link, NodeFilter.SHOW_TEXT, null, false);
+                        let textNode = walker.nextNode();
+                        while (textNode) {
+                            if (textNode.nodeValue.trim().length > 0) {
+                                textNode.nodeValue = input.value;
+                                break; // Stop after first text replacement (usually the label)
+                            }
+                            textNode = walker.nextNode();
+                        }
+                        // Fallback if no text node found (weird case)
+                        if (!textNode) link.innerText = input.value;
+                    }
+                    navIndex++;
                 }
-                matchIndex++;
             });
         }
 
         return doc.documentElement.outerHTML;
     }
 
-    // 3. Extract Nav Items (Heuristic)
+    // 3. Extract Nav Items (Improved)
     function extractNavItems() {
         const rawHtml = htmlInput.value;
         if (!rawHtml) return;
@@ -303,35 +304,45 @@ document.addEventListener('DOMContentLoaded', () => {
         const parser = new DOMParser();
         const doc = parser.parseFromString(rawHtml, 'text/html');
 
-        const links = doc.querySelectorAll('nav a, .navbar a, .menu a, .sidebar a');
+        // Broader selector for nav links
+        // Includes generic list items if they look like a menu
+        const links = doc.querySelectorAll('nav a, .navbar a, .menu a, .sidebar a, ul.nav li a, .nav-item a, a.nav-link');
+
         currentNavItems = [];
         navEditor.innerHTML = '';
 
         let count = 0;
 
-        if (links.length === 0) {
-            navEditor.innerHTML = '<div class="empty-state">No navigation links detected.</div>';
-            return;
-        }
-
+        // Filter and Dedupe?
+        // Let's just create inputs for all strictly "nav-link" looking things
         links.forEach((link, index) => {
             const text = link.innerText.trim();
-            if (text.length < 2) return;
+            if (text.length < 2) return; // Skip empty/icon-only
+
+            // Check visibility? Hard to do on static DOM parse.
 
             currentNavItems.push({ original: text, index: count });
 
             const row = document.createElement('div');
-            row.className = 'nav-editor-item';
+            row.className = 'comparison-row'; // Use the nice grid layout style if possible, or list
+            row.style.marginBottom = "8px";
+
             row.innerHTML = `
-                <input type="text" id="nav-item-${count}" value="${text}" data-original="${text}">
+                <div class="dual-input">
+                    <input type="text" class="detected-input" value="${text}" readonly title="Original Label">
+                    <i class="fa-solid fa-arrow-right"></i>
+                    <input type="text" id="nav-item-${count}" placeholder="Rename '${text}'">
+                </div>
              `;
-            row.querySelector('input').addEventListener('input', () => {
-                updatePreview();
-            });
+            row.querySelector('input:not([readonly])').addEventListener('input', updatePreview);
 
             navEditor.appendChild(row);
             count++;
         });
+
+        if (count === 0) {
+            navEditor.innerHTML = '<div class="empty-state">No navigation links detected.</div>';
+        }
     }
 
     // --- Helpers ---
