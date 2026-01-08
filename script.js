@@ -457,30 +457,68 @@ document.addEventListener('DOMContentLoaded', () => {
             copysToUpdate.forEach(n => {
                 let text = n.nodeValue;
 
-                // 1. Force Replace App Name & Slogan (if they exist in this text node)
-                // This acts as a second pass specifically for the footer
+                // Strategy A: Targeted Regex Replacement (Case-Insensitive)
+                // This handles "Sulap Foto" vs "sulap foto" mismatches
                 if (currentDetectedBrand && currentDetectedBrand !== "Not detected" && brandName) {
-                    text = text.split(currentDetectedBrand).join(brandName);
+                    // Escape regex special chars in detected name just in case
+                    const escaped = currentDetectedBrand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const re = new RegExp(escaped, 'gi');
+                    text = text.replace(re, brandName);
                 }
 
                 if (currentDetectedSlogan && currentDetectedSlogan !== "Not detected" && slogan) {
-                    text = text.split(currentDetectedSlogan).join(slogan);
+                    const escaped = currentDetectedSlogan.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const re = new RegExp(escaped, 'gi');
+                    text = text.replace(re, slogan);
                 }
 
-                // 2. Company Name Replacement (Handle "by ...")
-                const lower = text.toLowerCase();
-                if (lower.includes('by ')) {
-                    const match = text.match(/by\s+/i);
+                // Strategy B: Structural Reconstruction (The "Big Hammer")
+                // If text looks like "© 2025. [Stuff] by [Company]", and we have inputs, just rebuild it.
+                // This ensures we don't end up with mixed old/new content if detection failed.
+                const patterns = [
+                    // Pattern: © [Year] [Middle] by [Suffix]
+                    /([©|Copyright].*?\d{4}.*?)\s+(.*?)\s+(by\s+.*)/i
+                ];
+
+                for (let pat of patterns) {
+                    const match = text.match(pat);
                     if (match) {
-                        const index = match.index;
-                        // Keep everything before "by " (which now includes updated AppName/Slogan)
-                        const prefix = text.substring(0, index + match[0].length);
-                        text = prefix + companyName;
+                        // match[1] = "© 2025."
+                        // match[2] = "Sulap Foto v3.6 pro" (The Middle)
+                        // match[3] = "by Ichsan Labs"
+
+                        // If we successfully replaced brand/slogan in Strategy A, match[2] might already be "FlowPict Test".
+                        // But if Strategy A failed (detection mismatch), match[2] is still "Sulap Foto...".
+
+                        let middle = match[2];
+                        // Double check: if middle still contains old detected brand, replace it broadly
+                        if (currentDetectedBrand && middle.toLowerCase().includes(currentDetectedBrand.toLowerCase())) {
+                            middle = middle.replace(new RegExp(currentDetectedBrand, 'gi'), brandName);
+                        }
+                        if (currentDetectedSlogan && middle.toLowerCase().includes(currentDetectedSlogan.toLowerCase())) {
+                            middle = middle.replace(new RegExp(currentDetectedSlogan, 'gi'), slogan);
+                        }
+
+                        // Reconstruct: Prefix + Middle + "by " + NewCompany
+                        // Note: We force the company part because we know the user wants 'by [Company]'
+                        const prefix = match[1];
+                        text = `${prefix} ${middle} by ${companyName}`;
+                        break; // Stop after successful reconstruction
                     }
-                } else if (!text.includes(companyName)) {
-                    // If no "by", but we are editing the copyright line, maybe append it?
-                    // Or just leave it if we can't be safe. 
-                    // Let's assume the user implies "by [Company]" if they are using the Company field.
+                }
+
+                // Strategy C: Simple "by" replacement fallback (if structure didn't match perfectly)
+                // Only runs if we haven't rebuilt it yet (heuristic check)
+                if (!text.includes(companyName)) {
+                    const lower = text.toLowerCase();
+                    if (lower.includes('by ')) {
+                        const match = text.match(/by\s+/i);
+                        if (match) {
+                            const index = match.index;
+                            const prefix = text.substring(0, index + match[0].length);
+                            text = prefix + companyName;
+                        }
+                    }
                 }
 
                 n.nodeValue = text;
