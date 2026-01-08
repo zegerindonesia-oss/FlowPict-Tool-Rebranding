@@ -489,6 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
                             let textNode = walker.nextNode();
                             while (textNode) {
+                                // SAFETY FIX: Ensure nodeValue exists before checking includes
                                 if (textNode.nodeValue && textNode.nodeValue.includes(item.original)) {
                                     textNode.nodeValue = textNode.nodeValue.replace(item.original, input.value);
                                     break;
