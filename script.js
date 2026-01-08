@@ -539,29 +539,51 @@ document.addEventListener('DOMContentLoaded', () => {
                     font-family: var(--theme-font) !important;
                 }
                 
+                /* Sidebar: Enforce Dark Background & Light Text Pattern */
                 .sidebar, aside, .sidebar-wrapper {
                     background-color: var(--color-sidebar) !important;
-                    color: white !important; /* Sidebar usually dark or intense */
+                    color: #FFFFFF !important; /* Force white text for contrast on dark sidebars */
                     border-right: 1px solid var(--color-border) !important;
                 }
 
-                .sidebar a, .nav-link {
-                    color: rgba(255,255,255,0.7) !important;
+                /* Sidebar Text Elements - Force White/Light */
+                .sidebar h1, .sidebar h2, .sidebar h3, .sidebar h4, .sidebar h5, .sidebar h6,
+                .sidebar p, .sidebar span, .sidebar strong, .sidebar i {
+                    color: #FFFFFF !important;
+                    opacity: 0.95;
                 }
-                .sidebar a:hover, .nav-link:hover, .nav-item.active {
-                    color: white !important;
-                    background-color: rgba(255,255,255,0.1) !important;
+                .sidebar .text-muted, .sidebar small {
+                    color: rgba(255,255,255,0.6) !important;
+                }
+
+                /* Sidebar Links & Buttons: CLEAN STYLE (Not Blocks) */
+                .sidebar a, .nav-link, .sidebar button, .sidebar .btn {
+                    background: transparent !important; /* Remove solid blocks */
+                    background-image: none !important;
+                    color: rgba(255,255,255,0.75) !important;
+                    box-shadow: none !important;
+                    border: none !important;
+                    text-align: left !important;
+                    font-weight: 500 !important;
+                    transition: all 0.2s ease !important;
+                }
+
+                /* Sidebar Active/Hover: Subtle Gradient */
+                .sidebar a:hover, .nav-link:hover, .sidebar button:hover, .sidebar .btn:hover, 
+                .sidebar .active, .nav-item.active {
+                    /* Gradient Tipis-Tipis (Subtle) */
+                    background: linear-gradient(90deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05)) !important;
+                    color: #FFFFFF !important;
+                    border-radius: 8px !important;
+                    padding-left: 12px !important; /* Slight shift */
                 }
                 
-                /* Buttons */
-                .btn, button, .primary-btn {
+                /* Main Action Buttons (Keep these Bold & Gradient) */
+                main .btn, main button, .primary-btn, .action-btn {
                     background: linear-gradient(135deg, var(--color-gradient-main), var(--color-gradient-accent)) !important;
                     color: white !important;
                     border: none !important;
-                }
-                .btn:hover, button:hover {
-                    background: var(--color-primary-hover) !important;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
                 }
                 
                 /* Surface / Cards */
@@ -571,12 +593,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     color: var(--color-text-main) !important;
                 }
 
-                /* Text */
-                h1, h2, h3, h4, h5, h6 { color: var(--color-text-main) !important; }
-                p, span, small { color: var(--color-text-muted) !important; }
+                /* General Headings */
+                main h1, main h2, main h3, main h4 { color: var(--color-text-main) !important; }
+                main p { color: var(--color-text-muted) !important; }
                 
                 /* Links */
-                a { color: var(--color-primary) !important; }
+                a { color: var(--color-primary) !important; text-decoration: none; }
             `;
 
             styleTag.innerHTML = css;
