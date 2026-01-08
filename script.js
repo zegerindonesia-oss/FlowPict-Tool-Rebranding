@@ -547,11 +547,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     font-family: var(--theme-font) !important;
                 }
                 
-                /* Sidebar: Enforce Dark Background & Light Text Pattern */
+                /* Sidebar: Enforce Gradient Background */
                 .sidebar, aside, .sidebar-wrapper {
-                    background-color: var(--color-sidebar) !important;
-                    color: #FFFFFF !important; /* Force white text for contrast on dark sidebars */
+                    background: linear-gradient(180deg, var(--color-gradient-main) 0%, var(--color-sidebar) 100%) !important;
+                    color: #FFFFFF !important;
                     border-right: 1px solid var(--color-border) !important;
+                }
+
+                /* Header: Enforce Gradient Background */
+                header, .main-header, .sidebar-header, .app-header, .brand-section {
+                    background: linear-gradient(90deg, var(--color-gradient-main), var(--color-gradient-accent)) !important;
+                    color: #FFFFFF !important;
+                }
+                
+                /* Ensure Header Text is White */
+                header h1, header h2, header h3, header p, 
+                .sidebar-header h1, .sidebar-header p,
+                .brand-section h1, .brand-section p {
+                    color: #FFFFFF !important;
                 }
 
                 /* Sidebar Text Elements - Force White/Light */
@@ -561,14 +574,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     opacity: 0.95;
                 }
                 .sidebar .text-muted, .sidebar small {
-                    color: rgba(255,255,255,0.6) !important;
+                    color: rgba(255,255,255,0.7) !important;
                 }
 
-                /* Sidebar Links & Buttons: CLEAN STYLE (Not Blocks) */
+                /* Sidebar Links & Buttons: CLEAN STYLE */
                 .sidebar a, .nav-link, .sidebar button, .sidebar .btn {
-                    background: transparent !important; /* Remove solid blocks */
+                    background: transparent !important;
                     background-image: none !important;
-                    color: rgba(255,255,255,0.75) !important;
+                    color: rgba(255,255,255,0.85) !important;
                     box-shadow: none !important;
                     border: none !important;
                     text-align: left !important;
@@ -576,14 +589,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     transition: all 0.2s ease !important;
                 }
 
-                /* Sidebar Active/Hover: Subtle Gradient */
+                /* Sidebar Active/Hover: Brighter Gradient */
                 .sidebar a:hover, .nav-link:hover, .sidebar button:hover, .sidebar .btn:hover, 
                 .sidebar .active, .nav-item.active {
-                    /* Gradient Tipis-Tipis (Subtle) */
-                    background: linear-gradient(90deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05)) !important;
+                    background: linear-gradient(90deg, rgba(255,255,255,0.25), rgba(255,255,255,0.1)) !important;
                     color: #FFFFFF !important;
                     border-radius: 8px !important;
-                    padding-left: 12px !important; /* Slight shift */
+                    padding-left: 12px !important;
                 }
                 
                 /* Main Action Buttons (Keep these Bold & Gradient) */
@@ -605,8 +617,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 .alert, .note, .instruction, .info-box, .message-box, 
                 div[class*="info"], div[class*="note"], div[class*="alert"],
                 .tutorial-box, .tip {
-                    background-color: var(--color-bg-soft) !important;
-                    border: 1px solid var(--color-primary) !important;
+                    background-color: var(--color-bg-soft) !important; /* Soft Theme Background */
+                    border: 1px solid var(--color-primary-hover) !important; /* Slightly darker border */
                     color: var(--color-text-main) !important;
                     border-radius: 12px !important;
                 }
