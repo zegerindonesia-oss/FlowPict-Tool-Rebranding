@@ -10,6 +10,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const refreshNavBtn = document.getElementById('refreshNav');
     const navEditor = document.getElementById('navEditor');
     const applyBtn = document.getElementById('applyBtn');
+    const deviceBtns = document.querySelectorAll('.device-btn');
+    const previewContainer = document.querySelector('.preview-container');
+    const copyBtn = document.getElementById('copyBtn');
+    const copyPromptBtn = document.getElementById('copyPromptBtn');
 
     // Inputs (New & Detected)
     const brandNameInput = document.getElementById('brandName');
