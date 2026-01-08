@@ -403,39 +403,13 @@ document.addEventListener('DOMContentLoaded', () => {
             brandSelectors.forEach(sel => {
                 const els = doc.querySelectorAll(sel);
                 els.forEach(el => {
-                    // 1. Strict Safety: If contains complex/structural elements, SKIP.
-                    if (el.querySelector('img, svg, input, button, select, textarea, div, form, iframe, canvas, script, style')) return;
+                    // STRICTEST SAFETY: Only replace text if the element has NO children (Leaf Node)
+                    // This prevents wiping out icons, spans, scripts, or structural divs.
+                    if (el.children.length > 0) return;
 
-                    // 2. Content Check
                     const text = el.textContent.trim();
-                    const match = (text === currentDetectedBrand.trim() || text.includes(currentDetectedBrand.trim()));
-
-                    if (match) {
-                        // Case 1: Simple element (No children, just text)
-                        if (el.children.length === 0) {
-                            el.textContent = brandName;
-                        }
-                        // Case 2: Has children (e.g. <span>, <i>, <b>), but PASSED safety check (no imgs/scripts)
-                        else {
-                            // We don't want to wipe the children (like icons).
-                            // We travel the text nodes of THIS element and replace.
-                            const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
-                            let node;
-                            while (node = walker.nextNode()) {
-                                if (node.nodeValue.includes(currentDetectedBrand) || node.nodeValue.includes(currentDetectedBrand.split(' ')[0])) {
-                                    // Try to be smart? Or just generic replace?
-                                    // Let's safe replace:
-                                    node.nodeValue = node.nodeValue.replace(currentDetectedBrand, brandName);
-                                    // Also handle partial splits if possible (simple approach for now)
-                                    if (node.nodeValue.includes("Sulap Foto")) { // Fallback hardcode test
-                                        node.nodeValue = node.nodeValue.replace("Sulap Foto", brandName);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    // Method B: Loose Candidate (Short text, no children)
-                    else if (text.length > 0 && text.length < 50 && el.children.length === 0) {
+                    // Check if it matches detected brand (exact or partial)
+                    if (text === currentDetectedBrand.trim() || text.includes(currentDetectedBrand.trim())) {
                         el.textContent = brandName;
                     }
                 });
@@ -450,7 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Priority 1: Global Replace of detected slogan
             replaceGlobalText(doc.body, currentDetectedSlogan, slogan);
 
-            // Priority 2: Fallback Selectors
+            // Priority 2: Fallback Selectors (Safe Leaf Nodes Only)
             const sloganSelectors = [
                 '.slogan', '.subtitle', '.tagline', '.description',
                 '.sidebar-header p', '.sidebar-header small', '.sidebar-header span',
@@ -462,6 +436,9 @@ document.addEventListener('DOMContentLoaded', () => {
             sloganSelectors.forEach(sel => {
                 const els = doc.querySelectorAll(sel);
                 els.forEach(el => {
+                    // Safety: Leaf nodes only
+                    if (el.children.length > 0) return;
+
                     const text = el.innerText.trim();
                     if (text.length > 0) {
                         // If it matches detected or is "Not detected", we replace.
