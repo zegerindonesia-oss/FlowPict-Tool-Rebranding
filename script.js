@@ -64,61 +64,55 @@ document.addEventListener('DOMContentLoaded', () => {
     // Theme Configurations
     // Theme Configurations (Strictly Matched / Senada)
     const themeConfigs = {
-        modernPurple: {
-            primary: '#8B5CF6',   // Violet 500
-            sidebar: '#2e1065',   // Violet 950 (Deep Purple) - Matching
-            mode: 'gradient',
-            bg: 'gradient',
-            font: 'Inter, sans-serif'
+        purpleModern: {
+            primary: '#8B5CF6', primaryHover: '#7C3AED', secondary: '#C4B5FD',
+            gradientMain: '#8B5CF6', gradientAccent: '#6366F1', sidebar: '#111827',
+            bg: '#F9FAFB', surface: '#FFFFFF', textMain: '#1F2937', textMuted: '#6B7280', border: '#E5E7EB', font: 'Inter, sans-serif'
         },
-        oceanBlue: {
-            primary: '#0EA5E9',   // Sky 500
-            sidebar: '#082f49',   // Sky 950 (Deep Blue) - Matching
-            mode: 'gradient',
-            bg: 'light',
-            font: 'Roboto, sans-serif'
+        emeraldFresh: {
+            primary: '#10B981', primaryHover: '#059669', secondary: '#6EE7B7',
+            gradientMain: '#10B981', gradientAccent: '#34D399', sidebar: '#064E3B',
+            bg: '#ECFDF5', surface: '#FFFFFF', textMain: '#065F46', textMuted: '#047857', border: '#6EE7B7', font: 'Inter, sans-serif'
         },
-        classicBrown: {
-            primary: '#A1887F',   // Brown 300
-            sidebar: '#3E2723',   // Brown 900 (Deep Coffee) - Matching
-            mode: 'solid',
-            bg: 'light',
-            font: 'Georgia, serif'
+        blueOcean: {
+            primary: '#0284C7', primaryHover: '#0369A1', secondary: '#7DD3FC',
+            gradientMain: '#0284C7', gradientAccent: '#0EA5E9', sidebar: '#0C4A6E',
+            bg: '#F0F9FF', surface: '#FFFFFF', textMain: '#0C4A6E', textMuted: '#0369A1', border: '#BAE6FD', font: 'Inter, sans-serif'
         },
-        forestGreen: {
-            primary: '#10B981',   // Emerald 500
-            sidebar: '#022c22',   // Emerald 950 (Deep Green) - Matching
-            mode: 'gradient',
-            bg: 'light',
-            font: 'Inter, sans-serif'
+        darkNeon: {
+            primary: '#D946EF', primaryHover: '#C026D3', secondary: '#22D3EE',
+            gradientMain: '#D946EF', gradientAccent: '#8B5CF6', sidebar: '#000000',
+            bg: '#111827', surface: '#1F2937', textMain: '#F9FAFB', textMuted: '#9CA3AF', border: '#374151', font: 'Inter, sans-serif'
         },
-        sunsetOrange: {
-            primary: '#F97316',   // Orange 500
-            sidebar: '#431407',   // Orange 950 (Deep Burnt Orange) - Matching
-            mode: 'gradient',
-            bg: 'light',
-            font: 'Poppins, sans-serif'
+        sunsetCreative: {
+            primary: '#F97316', primaryHover: '#EA580C', secondary: '#FDBA74',
+            gradientMain: '#F97316', gradientAccent: '#EC4899', sidebar: '#431407',
+            bg: '#FFF7ED', surface: '#FFFFFF', textMain: '#431407', textMuted: '#9A3412', border: '#FED7AA', font: 'Poppins, sans-serif'
         },
-        crimsonRed: {
-            primary: '#EF4444',   // Red 500
-            sidebar: '#450a0a',   // Red 950 (Deep Red) - Matching
-            mode: 'solid',
-            bg: 'light',
-            font: 'Inter, sans-serif'
+        midnightIndigo: {
+            primary: '#6366F1', primaryHover: '#4F46E5', secondary: '#818CF8',
+            gradientMain: '#4338CA', gradientAccent: '#312E81', sidebar: '#1E1B4B',
+            bg: '#0F172A', surface: '#1E293B', textMain: '#F8FAFC', textMuted: '#94A3B8', border: '#334155', font: 'Inter, sans-serif'
         },
-        midnightTeal: {
-            primary: '#14b8a6',  // Teal 500
-            sidebar: '#042f2e',  // Teal 950
-            mode: 'gradient',
-            bg: 'dark',
-            font: 'Inter, sans-serif'
+        mintGlass: {
+            primary: '#14B8A6', primaryHover: '#0D9488', secondary: '#5EEAD4',
+            gradientMain: '#14B8A6', gradientAccent: '#2DD4BF', sidebar: '#F0FDFA',
+            bg: '#F0FDFA', surface: 'rgba(255,255,255,0.7)', textMain: '#134E4A', textMuted: '#0F766E', border: '#99F6E4', font: 'Inter, sans-serif'
         },
-        darkStealth: {
-            primary: '#94a3b8',   // Slate 400
-            sidebar: '#020617',   // Slate 950
-            mode: 'solid',
-            bg: 'dark',
-            font: 'Courier New, monospace'
+        roseElegant: {
+            primary: '#E11D48', primaryHover: '#BE123C', secondary: '#FB7185',
+            gradientMain: '#E11D48', gradientAccent: '#F43F5E', sidebar: '#881337',
+            bg: '#FFF1F2', surface: '#FFFFFF', textMain: '#881337', textMuted: '#BE123C', border: '#FDA4AF', font: 'Inter, sans-serif'
+        },
+        tealProfessional: {
+            primary: '#0D9488', primaryHover: '#115E59', secondary: '#5EEAD4',
+            gradientMain: '#0F766E', gradientAccent: '#115E59', sidebar: '#134E4A',
+            bg: '#F1F5F9', surface: '#FFFFFF', textMain: '#0F172A', textMuted: '#475569', border: '#CBD5E1', font: 'Inter, sans-serif'
+        },
+        monochromePro: {
+            primary: '#1F2937', primaryHover: '#000000', secondary: '#9CA3AF',
+            gradientMain: '#374151', gradientAccent: '#1F2937', sidebar: '#000000',
+            bg: '#F3F4F6', surface: '#FFFFFF', textMain: '#111827', textMuted: '#4B5563', border: '#D1D5DB', font: 'Inter, sans-serif'
         }
     };
 
@@ -519,28 +513,71 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // --- B. CSS Branding Injection (SKIPPED IF ORIGINAL) ---
-        if (!isOriginal) {
+        if (!isOriginal && theme) {
             const styleTag = doc.createElement('style');
 
-            // 1. Define Variables
-            let css = `
+            // 1. Define Variables & Overrides
+            const css = `
                 :root {
-                    --theme-primary: ${theme.primary} !important;
-                    --theme-primary-dark: ${theme.primaryDark} !important;
-                    --theme-sidebar: ${theme.sidebar} !important;
-                    --theme-sidebar-text: ${theme.sidebarText} !important;
-                    --theme-accent: ${theme.accent} !important;
-                    --theme-surface: ${theme.surface} !important;
+                    --color-primary: ${theme.primary} !important;
+                    --color-primary-hover: ${theme.primaryHover} !important;
+                    --color-secondary: ${theme.secondary} !important;
+                    --color-gradient-main: ${theme.gradientMain} !important;
+                    --color-gradient-accent: ${theme.gradientAccent} !important;
+                    --color-sidebar: ${theme.sidebar} !important;
+                    --color-bg: ${theme.bg} !important;
+                    --color-surface: ${theme.surface} !important;
+                    --color-text-main: ${theme.textMain} !important;
+                    --color-text-muted: ${theme.textMuted} !important;
+                    --color-border: ${theme.border} !important;
                     --theme-font: ${theme.font} !important;
                 }
-            `;
+                
+                body, html {
+                    background-color: var(--color-bg) !important;
+                    color: var(--color-text-main) !important;
+                    font-family: var(--theme-font) !important;
+                }
+                
+                .sidebar, aside, .sidebar-wrapper {
+                    background-color: var(--color-sidebar) !important;
+                    color: white !important; /* Sidebar usually dark or intense */
+                    border-right: 1px solid var(--color-border) !important;
+                }
 
-            // Just apply the core necessary overrides since user liked the original but wanted rebranding fixes
-            css += `
-                .btn, button, .primary-btn { background-color: var(--theme-primary) !important; color: white !important; }
-                .sidebar, aside, .glass-panel { background-color: var(--theme-sidebar) !important; color: white !important; }
-                a { color: var(--theme-primary) !important; }
-             `;
+                .sidebar a, .nav-link {
+                    color: rgba(255,255,255,0.7) !important;
+                }
+                .sidebar a:hover, .nav-link:hover, .nav-item.active {
+                    color: white !important;
+                    background-color: rgba(255,255,255,0.1) !important;
+                }
+                
+                /* Buttons */
+                .btn, button, .primary-btn {
+                    background: linear-gradient(135deg, var(--color-gradient-main), var(--color-gradient-accent)) !important;
+                    color: white !important;
+                    border: none !important;
+                }
+                .btn:hover, button:hover {
+                    background: var(--color-primary-hover) !important;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+                }
+                
+                /* Surface / Cards */
+                .card, .panel, .glass-panel, .surface {
+                    background-color: var(--color-surface) !important;
+                    border: 1px solid var(--color-border) !important;
+                    color: var(--color-text-main) !important;
+                }
+
+                /* Text */
+                h1, h2, h3, h4, h5, h6 { color: var(--color-text-main) !important; }
+                p, span, small { color: var(--color-text-muted) !important; }
+                
+                /* Links */
+                a { color: var(--color-primary) !important; }
+            `;
 
             styleTag.innerHTML = css;
             doc.head.appendChild(styleTag);
