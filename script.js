@@ -320,9 +320,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentDetected && currentDetected !== "Not detected") {
                 const allElements = doc.querySelectorAll('*');
                 for (let el of allElements) {
-                    if (el.children.length === 0 && el.innerText.includes(currentDetected)) {
-                        if (el.innerText.trim() === currentDetected.trim()) {
-                            el.innerText = brandName;
+                    // SAFETY FIX: Use textContent instead of innerText for broader compatibility (SVGs etc)
+                    if (el.children.length === 0 && el.textContent && el.textContent.includes(currentDetected)) {
+                        if (el.textContent.trim() === currentDetected.trim()) {
+                            el.textContent = brandName;
                             replaced = true;
                         }
                     }
@@ -331,7 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!replaced) {
                 const candidates = doc.querySelectorAll('.navbar-brand, .brand, .logo, h1, .brand-name, .sidebar-brand');
                 candidates.forEach(el => {
-                    if (el.innerText.length < 50 && el.innerText.length > 0) el.innerText = brandName;
+                    if (el.textContent && el.textContent.length < 50 && el.textContent.length > 0) el.textContent = brandName;
                 });
             }
             doc.title = brandName;
@@ -341,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const slogan = sloganInput.value;
         if (slogan) {
             const potentialSlogans = doc.querySelectorAll('.slogan, .subtitle, p.description, .tagline');
-            potentialSlogans.forEach(el => el.innerText = slogan);
+            potentialSlogans.forEach(el => { if (el.textContent) el.textContent = slogan; });
         }
         const logoUrl = logoUrlInput.value;
         if (logoUrl) {
@@ -352,8 +353,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (companyName) {
             const footerCopyright = doc.querySelectorAll('footer p, .copyright, .footer-text, .footer-copyright');
             footerCopyright.forEach(el => {
-                if (el.innerText.includes('©') || el.innerText.toLowerCase().includes('copyright')) {
-                    el.innerText = `© ${new Date().getFullYear()} ${companyName}. All rights reserved.`;
+                if (el.textContent && (el.textContent.includes('©') || el.textContent.toLowerCase().includes('copyright'))) {
+                    el.textContent = `© ${new Date().getFullYear()} ${companyName}. All rights reserved.`;
                 }
             });
         }
