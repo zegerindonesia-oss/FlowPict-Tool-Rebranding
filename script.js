@@ -489,7 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
                             let textNode = walker.nextNode();
                             while (textNode) {
-                                if (textNode.nodeValue.includes(item.original)) {
+                                if (textNode.nodeValue && textNode.nodeValue.includes(item.original)) {
                                     textNode.nodeValue = textNode.nodeValue.replace(item.original, input.value);
                                     break;
                                 }
@@ -504,11 +504,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return doc.documentElement.outerHTML;
     }
 
-    // --- (Removed old 'detectBranding' calls if redundant, but strictly keeping structure) ---
-    // NOTE: We need to make sure themeConfigs is defined BEFORE this function. It is. 
-
-
-    // 3. Extract Nav Items (Improved x2)
+    // 3. Extract Nav Items (Improved x3)
     function extractNavItems() {
         const rawHtml = htmlInput.value;
         if (!rawHtml) return;
@@ -516,9 +512,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const parser = new DOMParser();
         const doc = parser.parseFromString(rawHtml, 'text/html');
 
-        // Broader selector to catch buttons and divs acting as links in sidebars
-        // Explicitly look for "Gabung Foto" style elements (often inside a button or list item)
-        const potentialNavs = doc.querySelectorAll('nav a, .sidebar a, .menu a, .nav-link, button.nav-btn, .sidebar button, .list-group-item, li a, .menu-item');
+        // Target specifically the button spans in this template, plus standard links
+        const specificButtons = doc.querySelectorAll('button.sidebar-btn span, button.sidebar-sub-btn');
+        const generalLinks = doc.querySelectorAll('nav a, .sidebar a, .menu a, .nav-link, li a');
+
+        // Merge node lists
+        const potentialNavs = [...specificButtons, ...generalLinks];
 
         currentNavItems = [];
         navEditor.innerHTML = '';
@@ -527,21 +526,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const seenTexts = new Set();
 
         potentialNavs.forEach((el, index) => {
-            // Get text but ignore "New", "Pro", badges
-            // Clone to not mess up DOM? No need, just parse text.
             let text = el.innerText;
             if (!text) return;
 
-            // Cleanup: Remove common badge words
+            // Cleanup
             text = text.replace(/New|Pro|Beta|Hot/gi, '').trim();
-            // Remove icon chars (simple check)
-            text = text.replace(/[\uE000-\uF8FF]/g, '').trim();
+            text = text.replace(/[\uE000-\uF8FF]/g, '').trim(); // Remove icons
 
             if (text.length < 2) return;
-            if (seenTexts.has(text)) return; // Dedupe
+            if (seenTexts.has(text)) return;
             seenTexts.add(text);
 
-            // Filter out obviously non-nav text (too long)
             if (text.length > 30) return;
 
             currentNavItems.push({ original: text, index: count });
