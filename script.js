@@ -343,86 +343,134 @@ document.addEventListener('DOMContentLoaded', () => {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
-        // Get Current Theme Config
         const selectedThemeKey = themePresetInput ? themePresetInput.value : 'original';
-
-        // 0. If Original, return cleaned HTML (maybe allow text edits? User said "Asli munculnya", implies raw).
-        // However, usually tools allow renaming even on original. Let's allow renaming but SKIP style injection.
         const isOriginal = selectedThemeKey === 'original';
         const theme = themeConfigs[selectedThemeKey] || themeConfigs['modernPurple'];
 
+        // --- Helper: Global Text Replace ---
+        // Walks through all text nodes and replaces occurrences of 'search' with 'replace'
+        function replaceGlobalText(root, search, replace) {
+            if (!search || !replace || search === "Not detected" || search.trim().length === 0) return;
+
+            // Normalize
+            const safeSearch = search.trim();
+            const safeReplace = replace.trim();
+
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+            let node;
+            const nodesToUpdate = [];
+
+            while (node = walker.nextNode()) {
+                // Skip if parent is script or style
+                if (node.parentNode && (node.parentNode.tagName === 'SCRIPT' || node.parentNode.tagName === 'STYLE')) continue;
+
+                if (node.nodeValue.includes(safeSearch)) {
+                    nodesToUpdate.push(node);
+                }
+            }
+
+            // Update after walking to avoid messing up the walker
+            nodesToUpdate.forEach(n => {
+                // Global replaceAll in the text content
+                // Simple split/join is safer than regex for literal strings
+                n.nodeValue = n.nodeValue.split(safeSearch).join(safeReplace);
+            });
+        }
+
         // --- A. Content Replacement (Rebranding) ---
-        // (Runs for ALL themes including Original, unless user wants pure raw)
-        // User said "Apply Customisation" transforms it. 
-        // Let's assume text branding applies always, but styling only on theme.
 
         // 1. App Name
         const brandName = brandNameInput.value;
+        const currentDetectedBrand = detectedBrandName.value;
         if (brandName) {
-            const currentDetected = detectedBrandName.value;
-            let replaced = false;
+            // Priority 1: Global Replace of detected name
+            replaceGlobalText(doc.body, currentDetectedBrand, brandName);
 
-            // Try precise replacement if we detected something valid
-            if (currentDetected && currentDetected !== "Not detected" && currentDetected !== "Error scanning") {
-                const allElements = doc.querySelectorAll('h1, h2, .brand, .navbar-brand, .logo-text, .sidebar-brand span, a');
-                for (let el of allElements) {
-                    // Strict content matching to avoid replacing random text
-                    if (el.textContent.trim() === currentDetected.trim()) {
-                        el.textContent = brandName;
-                        replaced = true;
-                    }
+            // Priority 2: Fallback for Navbar/Title if detection wasn't perfect but selectors work
+            const candidates = doc.querySelectorAll('.navbar-brand, .brand, .logo, h1, .brand-name, .sidebar-brand, .site-title');
+            candidates.forEach(el => {
+                // If the element has VERY short text (likely just the brand), force update
+                if (el.innerText.trim().length > 0 && el.innerText.trim().length < 50) {
+                    // Only if it doesn't contain children elements (keep structure)
+                    if (el.children.length === 0) el.innerText = brandName;
                 }
-            }
-
-            // Broad fallback if precise replacement failed
-            if (!replaced) {
-                const candidates = doc.querySelectorAll('.navbar-brand, .brand, .logo, h1, .brand-name, .sidebar-brand, .site-title');
-                candidates.forEach(el => {
-                    // Replce if it looks like a title (short text)
-                    if (el.textContent && el.textContent.length < 50 && el.textContent.length > 0) el.textContent = brandName;
-                });
-            }
+            });
             doc.title = brandName;
         }
 
-        // 2. Slogan Replacement
+        // 2. Slogan
         const slogan = sloganInput.value;
+        const currentDetectedSlogan = detectedSlogan.value;
         if (slogan) {
-            // Enhanced selector list matching detection
-            const potentialSlogans = doc.querySelectorAll('.slogan, .subtitle, p.description, .tagline, .sidebar-header p, .sidebar-header small, header p, .hero-text p');
+            // Priority 1: Global Replace of detected slogan
+            replaceGlobalText(doc.body, currentDetectedSlogan, slogan);
+
+            // Priority 2: Fallback Selectors
+            const potentialSlogans = doc.querySelectorAll('.slogan, .subtitle, p.description, .tagline, .sidebar-header p, .sidebar-header small, .version-badge');
             potentialSlogans.forEach(el => {
-                // Only replace if it contains text, avoids emptying structural divs
                 if (el.innerText && el.innerText.trim().length > 0) {
-                    el.innerText = slogan;
+                    // Be careful not to wipe out big descriptions if they weren't the detected slogan
+                    // But user wants "Slogan" field to update these spots.
+                    // We only force update if detection was empty or failed.
+                    if (!currentDetectedSlogan || currentDetectedSlogan === "Not detected") {
+                        el.innerText = slogan;
+                    }
                 }
             });
         }
 
-        // 3. Logo Replacement
+        // 3. Logo
         const logoUrl = logoUrlInput.value;
         if (logoUrl) {
-            // Enhanced selector list matching detection + common patterns
-            const logoImgs = doc.querySelectorAll('.logo img, .brand img, img.logo, header img, .sidebar-header img, img.brand-logo, .navbar-brand img');
-            logoImgs.forEach(img => {
-                img.src = logoUrl;
-                // Also update srcset if it exists to prevent browser preferring old image
-                if (img.srcset) img.removeAttribute('srcset');
+            const originalSrc = detectedLogo.title;
+
+            // Strategy A: Global Src Replace
+            if (originalSrc) {
+                const allImgs = doc.querySelectorAll('img');
+                allImgs.forEach(img => {
+                    // Check if src ends with the detected file name or matches
+                    if (img.src === originalSrc || img.getAttribute('src') === originalSrc) {
+                        img.src = logoUrl;
+                        if (img.srcset) img.removeAttribute('srcset');
+                    }
+                });
+            }
+
+            // Strategy B: Selectors Fallback
+            const logoSelectors = [
+                '.logo img', '.brand img', 'img.logo', 'header img',
+                '.sidebar-header img', 'img.brand-logo', '.navbar-brand img',
+                '#logo img'
+            ];
+            logoSelectors.forEach(sel => {
+                const imgs = doc.querySelectorAll(sel);
+                imgs.forEach(img => {
+                    img.src = logoUrl;
+                    if (img.srcset) img.removeAttribute('srcset');
+                });
             });
         }
 
-        // 4. Company/Footer Replacement
+        // 4. Company Name
         const companyName = companyNameInput.value;
+        const currentDetectedComp = detectedCompany.value;
         if (companyName) {
+            // Priority 1: Global Replace of detected company
+            replaceGlobalText(doc.body, currentDetectedComp, companyName);
+
+            // Priority 2: Standard Footer Updates (Copyright lines)
             const footerCopyright = doc.querySelectorAll('footer p, .copyright, .footer-text, .footer-copyright, .sidebar-footer, footer div, small');
             footerCopyright.forEach(el => {
                 const text = el.textContent.toLowerCase();
-                // Replace "Copyright" lines
                 if (text.includes('©') || text.includes('copyright')) {
-                    el.textContent = `© ${new Date().getFullYear()} ${companyName}. All rights reserved.`;
+                    // Update the year/name only
+                    // If regex fails (simple text), just overwrite if it's short
+                    if (el.innerText.length < 100 && !el.innerHTML.includes(companyName)) {
+                        el.innerText = `© ${new Date().getFullYear()} ${companyName}. All rights reserved.`;
+                    }
                 }
-                // Replace "by [Name]" lines
                 else if (text.trim().startsWith('by ')) {
-                    el.textContent = `by ${companyName}`;
+                    el.innerText = `by ${companyName}`;
                 }
             });
         }
@@ -444,129 +492,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             `;
 
-            // 2. Button Styling (Aggressive Overrides)
-            // Targeting [class*="btn"], [class*="button"] to catch 'btn-primary', 'custom-button', etc.
-            if (theme.mode === 'gradient') {
-                css += `
-                    button, input[type="submit"], .btn, [class*="btn-"], [class*="button"] {
-                        background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-dark) 100%) !important;
-                        background-color: var(--theme-primary) !important; /* Fallback */
-                        border: none !important;
-                        color: white !important;
-                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
-                    }
-                    /* Exclude outline/ghost buttons if needed? For now, we want aggressive Senada matching */
-                    
-                    button:hover, .btn:hover, [class*="btn-"]:hover {
-                        opacity: 0.9 !important;
-                        transform: translateY(-1px) !important;
-                    }
-                `;
-            } else {
-                css += `
-                    button, input[type="submit"], .btn, [class*="btn-"], [class*="button"] { 
-                        background: var(--theme-primary) !important; 
-                        color: white !important;
-                        border: none !important;
-                    }
-                `;
-            }
-
-            // 3. Sidebar / Navigation Styling (Attribute Selectors)
+            // Just apply the core necessary overrides since user liked the original but wanted rebranding fixes
             css += `
-                nav, aside, .sidebar, [class*="sidebar"], [class*="navbar"], [class*="drawer"], [class*="menu"] {
-                    background: var(--theme-sidebar) !important;
-                    background-color: var(--theme-sidebar) !important;
-                    color: var(--theme-sidebar-text) !important;
-                    border-right: 1px solid rgba(255,255,255,0.05) !important;
-                }
-                
-                /* Links in Sidebar */
-                nav a, aside a, [class*="sidebar"] a, [class*="menu"] a, .nav-item {
-                    color: rgba(255,255,255, 0.7) !important; 
-                }
-                
-                nav a:hover, aside a:hover, [class*="sidebar"] a:hover {
-                    background: rgba(255,255,255, 0.1) !important;
-                    color: white !important;
-                }
-                
-                /* Active States */
-                .active, [class*="active"] {
-                    background-color: rgba(255,255,255, 0.15) !important;
-                    color: white !important;
-                }
-            `;
-
-            // 4. Global Typography & Headings
-            css += `
-                body { 
-                    font-family: var(--theme-font) !important; 
-                    background-color: var(--theme-surface) !important;
-                }
-                
-                h1, h2, h3, h4, h5, h6, [class*="heading"], [class*="title"] {
-                    color: var(--theme-primary-dark) !important;
-                }
-                
+                .btn, button, .primary-btn { background-color: var(--theme-primary) !important; color: white !important; }
+                .sidebar, aside, .glass-panel { background-color: var(--theme-sidebar) !important; color: white !important; }
                 a { color: var(--theme-primary) !important; }
-                
-                /* Explicitly target Tailwind-like color classes to OVERRIDE them */
-                [class*="text-"] { color: inherit; } /* Reset */
-                
-                .text-primary, [class*="text-blue"], [class*="text-green"], [class*="text-teal"], [class*="text-indigo"], [class*="text-purple"] {
-                    color: var(--theme-primary) !important;
-                }
-                
-                [class*="bg-blue"], [class*="bg-green"], [class*="bg-teal"], [class*="bg-indigo"] {
-                    background-color: var(--theme-primary) !important;
-                }
-                
-                /* Badges */
-                [class*="badge"], [class*="label"], [class*="tag"] {
-                    background: var(--theme-primary) !important;
-                    color: white !important;
-                }
-            `;
-
-            // 5. Card/Container Styling
-            css += `
-                [class*="card"], [class*="panel"], [class*="box"], .container-white {
-                    border-radius: 12px !important;
-                }
-                /* Inputs */
-                input:focus, select:focus, textarea:focus {
-                    border-color: var(--theme-primary) !important;
-                    box-shadow: 0 0 0 3px rgba(var(--theme-primary), 0.2) !important;
-                }
-            `;
+             `;
 
             styleTag.innerHTML = css;
             doc.head.appendChild(styleTag);
         }
 
-        // --- C. Nav Renaming ---
+        // --- C. Nav Renaming (Preserved) ---
         if (currentNavItems.length > 0) {
             const allLinks = doc.querySelectorAll('a, button, [role="button"], .nav-item, li');
             currentNavItems.forEach((item, idx) => {
                 const input = document.getElementById(`nav-item-${idx}`);
                 if (input && input.value && input.value !== item.original) {
-                    for (let el of allLinks) {
-                        let rawText = el.innerText;
-                        if (!rawText) continue;
-                        if (rawText.includes(item.original)) {
-                            const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
-                            let textNode = walker.nextNode();
-                            while (textNode) {
-                                // SAFETY FIX: Ensure nodeValue exists before checking includes
-                                if (textNode.nodeValue && textNode.nodeValue.includes(item.original)) {
-                                    textNode.nodeValue = textNode.nodeValue.replace(item.original, input.value);
-                                    break;
-                                }
-                                textNode = walker.nextNode();
-                            }
-                        }
-                    }
+                    replaceGlobalText(doc.body, item.original, input.value);
                 }
             });
         }
