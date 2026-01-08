@@ -109,10 +109,25 @@
                 <section class="control-group">
                     <div class="group-header">
                         <span class="step-number">3</span>
-                        <h3>Custom Appearance</h3>
+                        <div class="input-group">
+                            <h3>3. Custom Appearance (Theme)</h3>
+                            <p class="description">Select a preset theme or customize manually.</p>
+                        </div>
                     </div>
 
                     <div class="style-options">
+                        <label>Theme Preset</label>
+                        <select id="themePreset" style="margin-bottom: 16px; border: 2px solid var(--primary-color);">
+                            <option value="custom">Custom Configuration</option>
+                            <option value="modernPurple" selected>Modern Purple Gradient</option>
+                            <option value="oceanBlue">Ocean Blue / Tech</option>
+                            <option value="classicBrown">Classic Brown / Elegant</option>
+                            <option value="forestGreen">Forest Green / Nature</option>
+                            <option value="sunsetOrange">Sunset Orange / Warm</option>
+                            <option value="crimsonRed">Crimson Red / Bold</option>
+                            <option value="darkStealth">Dark Mode / Stealth</option>
+                        </select>
+
                         <label>Primary Color</label>
                         <div class="color-picker-container">
                             <div class="detected-color-wrapper" title="Detected Color (Approx)">

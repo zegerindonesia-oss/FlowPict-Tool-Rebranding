@@ -29,7 +29,61 @@ document.addEventListener('DOMContentLoaded', () => {
     const fontFamilyInput = document.getElementById('fontFamily');
     const bgStyleInput = document.getElementById('bgStyle');
     const navPositionInput = document.getElementById('navPosition');
-    const sidebarColorInput = document.getElementById('sidebarColor'); // New
+    const sidebarColorInput = document.getElementById('sidebarColor');
+    const themePresetInput = document.getElementById('themePreset'); // New Theme Selector
+
+    // Theme Configurations
+    const themeConfigs = {
+        modernPurple: {
+            primary: '#8B5CF6',
+            sidebar: '#0f172a',
+            mode: 'gradient',
+            bg: 'gradient', // light gradient
+            font: 'Inter, sans-serif'
+        },
+        oceanBlue: {
+            primary: '#0EA5E9',
+            sidebar: '#0c4a6e',
+            mode: 'gradient',
+            bg: 'light',
+            font: 'Roboto, sans-serif'
+        },
+        classicBrown: {
+            primary: '#8D6E63',
+            sidebar: '#3E2723',
+            mode: 'solid',
+            bg: 'light',
+            font: 'Georgia, serif' // Fallback for "Classic" look
+        },
+        forestGreen: {
+            primary: '#10B981',
+            sidebar: '#064E3B',
+            mode: 'gradient',
+            bg: 'light',
+            font: 'Inter, sans-serif'
+        },
+        sunsetOrange: {
+            primary: '#F97316',
+            sidebar: '#431407',
+            mode: 'gradient',
+            bg: 'light',
+            font: 'Poppins, sans-serif'
+        },
+        crimsonRed: {
+            primary: '#DC2626',
+            sidebar: '#450a0a',
+            mode: 'solid',
+            bg: 'light',
+            font: 'Inter, sans-serif'
+        },
+        darkStealth: {
+            primary: '#94a3b8', // Muted slate
+            sidebar: '#000000',
+            mode: 'solid',
+            bg: 'dark',
+            font: 'Courier New, monospace'
+        }
+    };
 
     // Controls
     const deviceBtns = document.querySelectorAll('.device-btn');
@@ -41,6 +95,61 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentNavItems = [];
 
     // --- Core Logic ---
+
+    // ... (Existing Functions) ...
+
+    // --- Event Listeners ---
+
+    // Theme Preset Handler
+    if (themePresetInput) {
+        themePresetInput.addEventListener('change', () => {
+            const theme = themeConfigs[themePresetInput.value];
+            if (theme) {
+                // Apply values to inputs
+                primaryColorInput.value = theme.primary;
+                sidebarColorInput.value = theme.sidebar;
+                colorModeInput.value = theme.mode;
+                bgStyleInput.value = theme.bg;
+
+                // Try to match font if option exists, otherwise default
+                // Simple logic: just set it, browser handles fallback if option missing from select? 
+                // Actually select inputs need valid value. 
+                // Let's just assume standard fonts or generic families.
+                // Current options in HTML: Inter, Roboto, Poppins, Lato
+                // For Classic Brown we might want a serif. HTML doesn't have it yet.
+                // Let's map strict to available options or just leave current if no match.
+
+                const fontMap = {
+                    'Georgia, serif': 'Inter, sans-serif', // Fallback as HTML options are limited
+                    'Courier New, monospace': 'Inter, sans-serif'
+                };
+
+                // If the exact font isn't in the list, stick to Inter or current.
+                // But let's try to set if it matches one of the values.
+                fontFamilyInput.value = theme.font;
+
+                // Trigger update
+                updatePreview();
+            }
+        });
+    }
+
+    // Live update triggers
+    // IMPORTANT: Include themePresetInput? No, its change listener handles it.
+    // However, if manual input changes, we should set preset to 'custom'
+    const inputs = [brandNameInput, sloganInput, logoUrlInput, companyNameInput, primaryColorInput, colorModeInput, fontFamilyInput, bgStyleInput, navPositionInput, sidebarColorInput];
+
+    inputs.forEach(input => {
+        if (input) {
+            input.addEventListener('input', (e) => {
+                // If user changes style manually, switch dropdown to Custom
+                if ([primaryColorInput, sidebarColorInput, colorModeInput, bgStyleInput, fontFamilyInput].includes(e.target)) {
+                    themePresetInput.value = 'custom';
+                }
+                updatePreview();
+            });
+        }
+    });
 
     // 1. Update Preview
     function updatePreview() {
