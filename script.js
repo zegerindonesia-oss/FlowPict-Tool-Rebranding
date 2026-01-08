@@ -385,7 +385,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // File Upload Handler
-    // Direct change event on the input
     htmlUpload.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -393,30 +392,37 @@ document.addEventListener('DOMContentLoaded', () => {
         fileNameDisplay.innerText = file.name;
         fileNameDisplay.style.color = '#1e293b';
 
+        // Show loading state
+        previewFrame.srcdoc = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;color:#64748b;">Processing file...</div>';
+
         const reader = new FileReader();
         reader.onload = (event) => {
             const content = event.target.result;
-            // Store content in the hidden input to be used by updatePreview
+            if (!content) {
+                alert("File content is empty!");
+                return;
+            }
+
             htmlInput.value = content;
 
-            // Clear inputs to allow re-detection when new file is uploaded
-            try {
-                detectedBrandName.value = "Scanning...";
-                detectedSlogan.value = "Scanning...";
-                detectedLogo.value = "Scanning...";
-                detectedCompany.value = "Scanning...";
-                brandNameInput.value = '';
-                sloganInput.value = '';
-                logoUrlInput.value = '';
-                companyNameInput.value = '';
-            } catch (resetErr) { console.warn("Reset error", resetErr); }
+            // Reset to "Not Detected" defaults first
+            detectedBrandName.value = "Not detected";
+            detectedSlogan.value = "Not detected";
+            detectedLogo.value = "Not detected";
+            detectedCompany.value = "Not detected";
+
+            // Clear inputs
+            brandNameInput.value = '';
+            sloganInput.value = '';
+            logoUrlInput.value = '';
+            companyNameInput.value = '';
 
             // Run logic with safety
             try {
                 detectBranding(content);
             } catch (err) {
                 console.error("Branding detection failed:", err);
-                detectedBrandName.value = "Detection failed";
+                detectedBrandName.value = "Error scanning";
             }
 
             try {
@@ -426,9 +432,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 navEditor.innerHTML = '<div class="empty-state">Error loading navigation</div>';
             }
 
-            // Always update preview even if detection failed
+            // Update preview
             updatePreview();
         };
+
+        reader.onerror = (err) => {
+            console.error("File reading failed", err);
+            alert("Error reading file");
+        };
+
         reader.readAsText(file);
     });
 
