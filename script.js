@@ -545,91 +545,66 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.head.appendChild(styleTag);
         }
 
-        // --- D. Runtime Enforcement Information Script ---
-        // This script is injected into the preview to aggressively fix the footer 
-        // if the original app's JS dynamically renders or reverts it.
-        const runtimeScript = doc.createElement('script');
-        runtimeScript.innerHTML = `
-            (function() {
-                const config = {
-                    brand: "${brandName || ''}",
-                    slogan: "${slogan || ''}",
-                    company: "${companyName || ''}",
-                    bps: {
-                        oldComp: /ichsan\\s*labs?/i,
-                        oldBrand: /sulap\\s*foto/i,
-                        oldSlogan: /v\\s*3\\.6\\s*pro/i
-                    }
-                };
+        // --- D. Javascript String Literal Replacement (The Root Cause Fix) ---
+        // The footer (and other parts) are likely rendered by JS. 
+        // Our previous methods skipped <script> tags for safety. 
+        // Now we carefully replace specific string literals INSIDE the scripts.
 
-                function enforceBranding() {
-                    if (!config.brand && !config.company) return;
+        const scriptTags = doc.querySelectorAll('script');
+        scriptTags.forEach(script => {
+            if (script.src) return; // Skip external scripts
+            let jsContent = script.innerHTML;
+            let jsModified = false;
 
-                    // Target Footer-like elements
-                    const targets = document.querySelectorAll('footer, .footer, .copyright, small, div[class*="footer"], div[class*="copyright"]');
-                    
-                    targets.forEach(el => {
-                        // Avoid editing if it contains inputs/scripts
-                        if (el.querySelector('input, script, textarea')) return;
+            // Helper to safely replace string literals in JS
+            // We look for quotes to ensure we are replacing value strings, not variable names
+            // exact match for safe replacement
 
-                        let text = el.innerText;
-                        let modified = false;
-
-                        // 1. Replace "Ichsan Labs" -> Company
-                        if (config.company && config.bps.oldComp.test(text)) {
-                            text = text.replace(config.bps.oldComp, config.company);
-                            modified = true;
-                        }
-
-                        // 2. Replace "Sulap Foto" -> Brand
-                        if (config.brand && config.bps.oldBrand.test(text)) {
-                            text = text.replace(config.bps.oldBrand, config.brand);
-                            modified = true;
-                        }
-                        
-                        // 3. Replace "v3.6 pro" -> Slogan
-                        if (config.slogan && config.bps.oldSlogan.test(text)) {
-                            text = text.replace(config.bps.oldSlogan, config.slogan);
-                            modified = true;
-                        }
-
-                        // 4. Force "by [Company]" if missing but we are in a copyright line
-                        if (config.company && (text.includes('©') || text.toLowerCase().includes('copyright')) && !text.includes(config.company)) {
-                             if (text.toLowerCase().includes('by ')) {
-                                 // Replace existing "by ..." suffix
-                                 const parts = text.split(/by /i);
-                                 text = parts[0] + "by " + config.company;
-                                 modified = true;
-                             }
-                        }
-
-                        if (modified) {
-                            el.innerText = text;
-                        }
-                    });
+            // 1. Company Name
+            if (currentDetectedComp && currentDetectedComp !== "Not detected" && companyName) {
+                // Regex to match "Ichsan Labs" or 'Ichsan Labs'
+                // We don't use \b because of spaces. 
+                // We hope it's a unique enough string.
+                if (jsContent.includes(currentDetectedComp)) {
+                    // Global replace of the string
+                    const re = new RegExp(currentDetectedComp.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+                    jsContent = jsContent.replace(re, companyName);
+                    jsModified = true;
                 }
+            }
 
-                // Run immediately
-                enforceBranding();
+            // 2. Brand Name
+            if (currentDetectedBrand && currentDetectedBrand !== "Not detected" && brandName) {
+                if (jsContent.includes(currentDetectedBrand)) {
+                    const re = new RegExp(currentDetectedBrand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+                    jsContent = jsContent.replace(re, brandName);
+                    jsModified = true;
+                }
+            }
 
-                // Run periodically (every 500ms for 5 seconds) to catch delayed scripts
-                let count = 0;
-                const interval = setInterval(() => {
-                    enforceBranding();
-                    count++;
-                    if (count > 10) clearInterval(interval);
-                }, 500);
+            // 3. Slogan
+            if (currentDetectedSlogan && currentDetectedSlogan !== "Not detected" && slogan) {
+                if (jsContent.includes(currentDetectedSlogan)) {
+                    const re = new RegExp(currentDetectedSlogan.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+                    jsContent = jsContent.replace(re, slogan);
+                    jsModified = true;
+                }
+            }
 
-                // Observe DOM changes (The Nuclear Option)
-                const observer = new MutationObserver((mutations) => {
-                    enforceBranding();
-                });
-                observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-            })();
-        `;
-        doc.body.appendChild(runtimeScript);
+            // 4. Hardcoded Fallbacks (for known patterns like "Ichsan Labs")
+            if (companyName) {
+                if (/["']Ichsan Labs["']/i.test(jsContent)) {
+                    jsContent = jsContent.replace(/Ichsan Labs/gi, companyName);
+                    jsModified = true;
+                }
+            }
 
-        // --- C. Nav Renaming (Preserved) ---
+            if (jsModified) {
+                script.innerHTML = jsContent;
+            }
+        });
+
+        // --- E. Nav Renaming (Preserved) ---
         if (currentNavItems.length > 0) {
             const allLinks = doc.querySelectorAll('a, button, [role="button"], .nav-item, li');
             currentNavItems.forEach((item, idx) => {
@@ -640,7 +615,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // CRITICAL FIX: Preserve DOCTYPE
+        // CRITICAL: Ensure strict DOCTYPE to prevent Quirks Mode issues
         return "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
     }
 
