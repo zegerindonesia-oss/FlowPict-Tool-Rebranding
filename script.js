@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const brandNameInput = document.getElementById('brandName');
     const sloganInput = document.getElementById('slogan');
     const logoUrlInput = document.getElementById('logoUrl');
+    const companyNameInput = document.getElementById('companyName');
     const primaryColorInput = document.getElementById('primaryColor');
     const colorModeInput = document.getElementById('colorMode'); // solid/gradient
     const fontFamilyInput = document.getElementById('fontFamily');
@@ -39,6 +40,41 @@ document.addEventListener('DOMContentLoaded', () => {
         const blob = new Blob([generateModifiedHtml(rawHtml)], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         previewFrame.src = url;
+    }
+
+    // 1.5 Smart Detection (Auto-fill)
+    function detectBranding(html) {
+        if (!html) return;
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        // Detect Brand Name
+        // Heuristic: Look for h1, .brand, .logo-text
+        const brandCandidates = doc.querySelectorAll('.navbar-brand, .brand, .logo, h1, .wrapper-logo');
+        for (let el of brandCandidates) {
+            if (el.innerText && el.innerText.trim().length > 0 && el.innerText.trim().length < 30) {
+                // Only auto-fill if input is empty or user hasn't touched it (we can't track "touched" easily without state, so just check if empty for now?)
+                // BETTER: Just fill it, let user override.
+                if (!brandNameInput.value) brandNameInput.value = el.innerText.trim();
+                break;
+            }
+        }
+
+        // Detect Slogan
+        const sloganCandidates = doc.querySelectorAll('.slogan, .subtitle, p.description, .hero-text p');
+        for (let el of sloganCandidates) {
+            if (el.innerText && el.innerText.trim().length > 0 && el.innerText.trim().length < 60) {
+                if (!sloganInput.value) sloganInput.value = el.innerText.trim();
+                break;
+            }
+        }
+
+        // Detect Logo
+        // Look for img inside .brand or .logo
+        const logoImg = doc.querySelector('.brand img, .logo img, .navbar-brand img, header img');
+        if (logoImg && logoImg.src && !logoUrlInput.value) {
+            logoUrlInput.value = logoImg.src;
+        }
     }
 
     // 2. Generate Modified HTML (The "Rebranding" Engine)
@@ -74,6 +110,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (logoUrlInput.value) {
             const logoImgs = doc.querySelectorAll('.logo img, .brand img, img.logo');
             logoImgs.forEach(img => img.src = logoUrlInput.value);
+        }
+
+        // Apply Company Name (Footer usually)
+        if (companyNameInput.value) {
+            const footerCopyright = doc.querySelectorAll('footer p, .copyright, .footer-text');
+            footerCopyright.forEach(el => {
+                if (el.innerText.includes('©') || el.innerText.toLowerCase().includes('copyright')) {
+                    // Start of regex replacement would be better, but simple append/replace for now
+                    el.innerText = `© ${new Date().getFullYear()} ${companyNameInput.value}. All rights reserved.`;
+                }
+            });
         }
 
         // B. Apply Styling (Injected CSS)
@@ -262,12 +309,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Event Listeners ---
 
     // Live update triggers
-    const inputs = [brandNameInput, sloganInput, logoUrlInput, primaryColorInput, colorModeInput, fontFamilyInput, bgStyleInput, navPositionInput];
+    const inputs = [brandNameInput, sloganInput, logoUrlInput, companyNameInput, primaryColorInput, colorModeInput, fontFamilyInput, bgStyleInput, navPositionInput];
     inputs.forEach(input => {
-        input.addEventListener('input', updatePreview);
+        if (input) input.addEventListener('input', updatePreview);
     });
 
     htmlInput.addEventListener('input', () => {
+        // Only detect on first significant paste? 
+        // Or just run it. If user edits html, we might re-detect.
+        // Let's run detect only if the specific branding fields are empty to avoid overwriting user manual input?
+        // Actually user wants "Field di atas muncul custom brand".
+
+        // Strategy: Run detectBranding only when Paste/Upload happens, NOT on every keystroke of html editing if possible, 
+        // but here 'input' on textarea covers paste.
+        // We will simple check inside detectBranding if fields are computed.
+
+        // For simplicity: We call it here.
+        if (htmlInput.value.length > 20 && !brandNameInput.value) {
+            detectBranding(htmlInput.value);
+        }
+
         extractNavItems();
         updatePreview();
     });
@@ -337,6 +398,13 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.onload = (event) => {
             const content = event.target.result;
             htmlInput.value = content; // Sync with textarea
+
+            // Clear inputs to allow re-detection when new file is uploaded
+            brandNameInput.value = '';
+            sloganInput.value = '';
+            logoUrlInput.value = '';
+
+            detectBranding(content);
             extractNavItems();
             updatePreview();
         };
