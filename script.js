@@ -548,40 +548,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 /* Sidebar: Enforce Gradient Background */
-                .sidebar, aside, .sidebar-wrapper {
+                .sidebar, aside, .sidebar-wrapper, .nav-sidebar {
                     background: linear-gradient(180deg, var(--color-gradient-main) 0%, var(--color-sidebar) 100%) !important;
                     color: #FFFFFF !important;
                     border-right: 1px solid var(--color-border) !important;
                 }
 
-                /* Header: Enforce Gradient Background */
-                header, .main-header, .sidebar-header, .app-header, .brand-section {
+                /* Header: Enforce Gradient Background (Dynamic Theme) */
+                header, .main-header, .sidebar-header, .app-header, .brand-section, 
+                .hero, .hero-section, .banner, .top-bar {
                     background: linear-gradient(90deg, var(--color-gradient-main), var(--color-gradient-accent)) !important;
                     color: #FFFFFF !important;
                 }
                 
                 /* Ensure Header Text is White */
-                header h1, header h2, header h3, header p, 
-                .sidebar-header h1, .sidebar-header p,
-                .brand-section h1, .brand-section p {
+                header *, .main-header *, .sidebar-header *, .app-header *, .brand-section *, 
+                .hero *, .hero-section *, .banner * {
                     color: #FFFFFF !important;
                 }
 
-                /* Sidebar Text Elements - Force White/Light */
+                /* Sidebar Text Elements - Force White/Light (No Gray) */
                 .sidebar h1, .sidebar h2, .sidebar h3, .sidebar h4, .sidebar h5, .sidebar h6,
-                .sidebar p, .sidebar span, .sidebar strong, .sidebar i {
+                .sidebar p, .sidebar span, .sidebar strong, .sidebar i, .sidebar div, 
+                .sidebar li, .sidebar a, .sidebar label, .sidebar small,
+                .nav-label, .sidebar-heading, .menu-title {
                     color: #FFFFFF !important;
-                    opacity: 0.95;
+                    opacity: 1 !important; /* Remove opacity dimming */
                 }
-                .sidebar .text-muted, .sidebar small {
-                    color: rgba(255,255,255,0.7) !important;
+                
+                /* Specific overrides for any remaining gray elements */
+                .sidebar .text-muted, .sidebar .text-gray, .sidebar .text-secondary {
+                    color: rgba(255,255,255,0.85) !important;
                 }
 
                 /* Sidebar Links & Buttons: CLEAN STYLE */
                 .sidebar a, .nav-link, .sidebar button, .sidebar .btn {
                     background: transparent !important;
                     background-image: none !important;
-                    color: rgba(255,255,255,0.85) !important;
+                    color: #FFFFFF !important; /* Force pure white */
                     box-shadow: none !important;
                     border: none !important;
                     text-align: left !important;
