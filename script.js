@@ -130,34 +130,218 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // 1. Unpack HTML
-    function unpackHtml() {
-        // ... (No changes) ...
+    // State
+    let currentNavItems = [];
+
+    // --- Core Logic ---
+
+    // ... (Existing Functions) ...
+
+    // --- Event Listeners ---
+
+    // Theme Preset Handler (Direct Update)
+    if (themePresetInput) {
+        themePresetInput.addEventListener('change', updatePreview);
     }
 
-    // 2. Identify and Update Preview
+    // Live update triggers
+    // IMPORTANT: Include themePresetInput? No, its change listener handles it.
+    // However, if manual input changes, we should set preset to 'custom'
+    const inputs = [brandNameInput, sloganInput, logoUrlInput, companyNameInput, primaryColorInput, colorModeInput, fontFamilyInput, bgStyleInput, navPositionInput, sidebarColorInput];
+
+
+
+    // 1. Update Preview
     function updatePreview() {
         const rawHtml = htmlInput.value;
         if (!rawHtml) return;
 
-        // 1. Detect Branding (if needed)
-        detectBranding(rawHtml);
+        try {
+            const modHtml = generateModifiedHtml(rawHtml);
+            const blob = new Blob([modHtml], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
 
-        // 2. Extract Nav
-        extractNavItems();
+            // Critical Fix: Clear srcdoc so src takes precedence
+            previewFrame.removeAttribute('srcdoc');
+            previewFrame.src = url;
 
-        // 3. Generate New HTML
-        const modifiedHtml = generateModifiedHtml(rawHtml);
-
-        // 4. Update Iframe
-        const blob = new Blob([modifiedHtml], { type: 'text/html' });
-        previewFrame.src = URL.createObjectURL(blob);
+        } catch (err) {
+            console.error("Preview Generation Error:", err);
+            previewFrame.removeAttribute('src');
+            previewFrame.srcdoc = `<div style="color:red;padding:20px;">Error generating preview: ${err.message}</div>`;
+        }
     }
 
-    // ... (detectBranding preserved) ...
 
+
+    // 1.5 Smart Detection (Auto-fill)
+    function detectBranding(html) {
+        if (!html) return;
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        // --- Detect Brand Name ---
+        // Priority: 1. Semantic classes 2. H1/H2 3. Document Title
+        let brandFound = false;
+
+        // Strategy A: Explicit Selectors
+        const brandSelectors = [
+            '.navbar-brand', '.brand', '.logo', '.logo-text', '.brand-name',
+            '.sidebar-header h1', '.sidebar-header h2', '.sidebar-header h3',
+            'header h1', 'header h2', '.app-name', '.site-title',
+            '.sidebar-brand', '.sidebar-title', 'a.brand', 'a.navbar-brand span'
+        ];
+
+        for (let sel of brandSelectors) {
+            const el = doc.querySelector(sel);
+            if (el && el.innerText.trim().length > 0 && el.innerText.trim().length < 40) {
+                detectedBrandName.value = el.innerText.trim();
+                brandFound = true;
+                break;
+            }
+        }
+
+        // Strategy B: If no explicit selector, look for the first H1 or significant H2
+        if (!brandFound) {
+            const headings = doc.querySelectorAll('h1, h2');
+            for (let h of headings) {
+                if (h.innerText.trim().length > 2 && h.innerText.trim().length < 30) {
+                    detectedBrandName.value = h.innerText.trim();
+                    brandFound = true;
+                    break;
+                }
+            }
+        }
+
+        // Strategy C: Document Title (Final Fallback)
+        if (!brandFound && doc.title && doc.title.length < 50) {
+            // Remove common suffixes like " - Home", " | Official"
+            let cleanTitle = doc.title.split(/[-|]/)[0].trim();
+            if (cleanTitle.length > 0) {
+                detectedBrandName.value = cleanTitle;
+                brandFound = true;
+            }
+        }
+
+        // AUTO-FILL Brand Input
+        if (brandFound) {
+            brandNameInput.value = detectedBrandName.value;
+        } else {
+            detectedBrandName.value = "Not detected";
+            // Optional: Keep value empty or set placeholder? Keep value empty.
+        }
+
+        // --- Detect Slogan ---
+        let sloganFound = false;
+        // Broader selectors for detection
+        const sloganSelectors = [
+            '.slogan', '.subtitle', '.tagline', '.description',
+            '.sidebar-header p', '.sidebar-header small', '.sidebar-header span',
+            'header p', 'header small',
+            '.hero-text p', '.hero-section p', '.main-header p'
+        ];
+
+        for (let sel of sloganSelectors) {
+            const el = doc.querySelector(sel);
+            if (el && el.innerText.trim().length > 0 && el.innerText.trim().length < 80) { // Increased length limit slightly
+                // Filter out common non-slogan text
+                const text = el.innerText.toLowerCase();
+                if (!text.includes('admin') && !text.includes('menu') && !text.includes('copyright')) {
+                    detectedSlogan.value = el.innerText.trim();
+                    sloganFound = true;
+                    break;
+                }
+            }
+        }
+
+        // AUTO-FILL Slogan Input
+        if (sloganFound) {
+            sloganInput.value = detectedSlogan.value;
+        } else {
+            detectedSlogan.value = "Not detected";
+        }
+
+        // --- Detect Logo ---
+        // Broader selectors for logo
+        const logoSelectors = [
+            '.brand img', '.logo img', '.navbar-brand img',
+            'header img', '.sidebar-header img', 'img.logo',
+            'img.brand-logo', '#logo img', 'a.brand-link img'
+        ];
+
+        // Try all logo selectors
+        let logoImg = null;
+        for (let sel of logoSelectors) {
+            logoImg = doc.querySelector(sel);
+            if (logoImg) break;
+        }
+
+        if (logoImg && logoImg.src) {
+            detectedLogo.value = "Found image";
+            detectedLogo.title = logoImg.src;
+            if (!logoUrlInput.value) logoUrlInput.value = logoImg.src; // Auto-fill URL
+        } else {
+            detectedLogo.value = "Not detected";
+        }
+
+        // --- Detect Company (Footer) ---
+        const footerCopyright = doc.querySelectorAll('footer p, footer div, .copyright, .footer-text, .footer-copyright, footer span');
+        let companyFound = false;
+
+        // 1. Try standard "Copyright" patterns
+        for (let el of footerCopyright) {
+            const text = el.innerText.toLowerCase();
+            if (text.includes('©') || text.includes('copyright')) {
+                let cleanText = el.innerText.replace(/[\n\r]+/g, ' ').trim();
+                const match = cleanText.match(/©\s*\d{4}\s*(.*?)(\.|$)/);
+                if (match && match[1]) {
+                    detectedCompany.value = match[1].replace(/All rights reserved/i, '').trim();
+                } else {
+                    if (cleanText.length > 50) cleanText = cleanText.substring(0, 47) + "...";
+                    detectedCompany.value = cleanText;
+                }
+                companyFound = true;
+                break;
+            }
+        }
+
+        // 2. Try "By [Name]" pattern (common in footers/sidebars like "by Ichsan Labs")
+        if (!companyFound) {
+            // Traverse all footer text or sidebar text for "by"
+            const allTextEls = doc.querySelectorAll('footer *, .sidebar-footer *, .sidebar *, .panel-footer *');
+            for (let el of allTextEls) {
+                // Avoid empty or huge blocks
+                if (el.children.length > 0) continue;
+
+                const text = el.innerText.trim();
+                if (text.toLowerCase().startsWith('by ') && text.length < 40) {
+                    let extracted = text.substring(3).trim(); // Remove "by "
+                    detectedCompany.value = extracted;
+                    companyFound = true;
+                    break;
+                }
+            }
+        }
+
+        // 3. Fallback: Search for specific user request "ichsan labs" if it appears anywhere relevant
+        if (!companyFound) {
+            const bodyText = doc.body.innerText.toLowerCase();
+            if (bodyText.includes('ichsan labs')) {
+                detectedCompany.value = "Ichsan Labs";
+                companyFound = true;
+            }
+        }
+
+        // AUTO-FILL Company Input
+        if (companyFound) {
+            companyNameInput.value = detectedCompany.value;
+        } else {
+            detectedCompany.value = "Not detected";
+        }
+    }
+
+    // 2. Generate Modified HTML (The "Rebranding" Engine)
     function generateModifiedHtml(html) {
-        // ... (preserved)
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
@@ -165,9 +349,175 @@ document.addEventListener('DOMContentLoaded', () => {
         const isOriginal = selectedThemeKey === 'original';
         const theme = themeConfigs[selectedThemeKey] || themeConfigs['purpleModern'];
 
-        // ... (replaceGlobalText preserved) ...
+        // --- Helper: Global Text Replace ---
+        // Walks through all text nodes and replaces occurrences of 'search' with 'replace'
+        function replaceGlobalText(root, search, replace) {
+            if (!search || !replace || search === "Not detected" || search.trim().length === 0) return;
 
-        // ... (Footer Replacement Logic preserved) ...
+            // Normalize
+            const safeSearch = search.trim();
+            const safeReplace = replace.trim();
+
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+            let node;
+            const nodesToUpdate = [];
+
+            while (node = walker.nextNode()) {
+                const parent = node.parentNode;
+                if (!parent) continue;
+                const tag = parent.tagName;
+
+                // Safety: Skip script, style, and code-related blocks
+                if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEXTAREA' || tag === 'CODE' || tag === 'PRE') continue;
+
+                if (node.nodeValue.includes(safeSearch)) {
+                    nodesToUpdate.push(node);
+                }
+            }
+
+            // Update after walking to avoid messing up the walker
+            nodesToUpdate.forEach(n => {
+                // Global replaceAll in the text content
+                // Simple split/join is safer than regex for literal strings
+                n.nodeValue = n.nodeValue.split(safeSearch).join(safeReplace);
+            });
+        }
+
+        // --- A. Content Replacement (Rebranding) ---
+
+        // 1. App Name
+        const brandName = brandNameInput.value;
+        const currentDetectedBrand = detectedBrandName.value;
+        if (brandName) {
+            // Strategy: Global Text Node Replacement (SAFE)
+            // This replaces the text wherever it appears without destroying elements
+            replaceGlobalText(doc.body, currentDetectedBrand, brandName);
+
+            // Minimal Fallback: Update Title
+            doc.title = brandName;
+        }
+
+        // 2. Slogan
+        const slogan = sloganInput.value;
+        const currentDetectedSlogan = detectedSlogan.value;
+        if (slogan) {
+            // Strategy: Global Text Node Replacement (SAFE)
+            replaceGlobalText(doc.body, currentDetectedSlogan, slogan);
+        }
+
+        // 3. Logo
+        const logoUrl = logoUrlInput.value;
+        if (logoUrl) {
+            const originalSrc = detectedLogo.title;
+
+            // Strategy A: Global Src Replace
+            if (originalSrc) {
+                const allImgs = doc.querySelectorAll('img');
+                allImgs.forEach(img => {
+                    if (img.src === originalSrc || img.getAttribute('src') === originalSrc) {
+                        img.src = logoUrl;
+                        if (img.srcset) img.removeAttribute('srcset');
+                    }
+                });
+            }
+
+            // Strategy B: Selectors Fallback (Safe, only updates src)
+            const logoSelectors = [
+                '.logo img', '.brand img', 'img.logo', 'header img',
+                '.sidebar-header img', 'img.brand-logo', '.navbar-brand img',
+                '#logo img'
+            ];
+            logoSelectors.forEach(sel => {
+                const imgs = doc.querySelectorAll(sel);
+                imgs.forEach(img => {
+                    img.src = logoUrl;
+                    if (img.srcset) img.removeAttribute('srcset');
+                });
+            });
+        }
+
+        // 4. Company Name
+        const companyName = companyNameInput.value;
+        const currentDetectedComp = detectedCompany.value;
+        if (companyName) {
+            // Priority 1: Global Replace of detected company
+            replaceGlobalText(doc.body, currentDetectedComp, companyName);
+
+            // Priority 2: Targeted Footer Updates (Text Node Walker - SAFE)
+            const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null, false);
+            let node;
+            const copysToUpdate = [];
+            while (node = walker.nextNode()) {
+                // Skip sensitive tags just in case
+                if (node.parentNode && ['SCRIPT', 'STYLE'].includes(node.parentNode.tagName)) continue;
+
+                if (node.nodeValue.includes('©') || node.nodeValue.toLowerCase().includes('copyright')) {
+                    copysToUpdate.push(node);
+                }
+            }
+
+            // Strategy: Element-Level Search for Footer (Handles fragmented nodes)
+            // We search for the container, then act on its text/HTML
+            const footerContainers = doc.querySelectorAll('footer, .footer, .copyright, .sidebar-footer, small, .legal');
+
+            footerContainers.forEach(container => {
+                // Safety Check: Don't nuuke complex sub-trees (but footer containers are usually safe to traverse)
+                // We'll use a specific walker for the footer context
+                const footerWalker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+                let fNode;
+                while (fNode = footerWalker.nextNode()) {
+                    let fText = fNode.nodeValue;
+
+                    // 1. Explicit Replacement of "Ichsan Labs" (User reported mismatch)
+                    // Because detection might have failed or been exact-match only
+                    if (/ichsan\s*labs?/i.test(fText)) {
+                        fText = fText.replace(/ichsan\s*labs?/gi, companyName);
+                    }
+
+                    // 2. Explicit Replacement of "Sulap Foto" (App Name) in Footer
+                    if (/sulap\s*foto/i.test(fText) && brandName) {
+                        fText = fText.replace(/sulap\s*foto/gi, brandName);
+                    }
+
+                    // 3. Explicit Replacement of "v3.6 pro" (Slogan) in Footer
+                    if (/v\s*3\.6\s*pro/i.test(fText) && slogan) {
+                        fText = fText.replace(/v\s*3\.6\s*pro/gi, slogan);
+                    }
+
+                    // 4. Standard Detected Brand/Slogan Replace (if not caught above)
+                    if (currentDetectedBrand && currentDetectedBrand !== "Not detected" && brandName) {
+                        const escBrand = currentDetectedBrand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        fText = fText.replace(new RegExp(escBrand, 'gi'), brandName);
+                    }
+
+                    // 5. Structure Fix: "by [Company]" 
+                    // If we see "by [Company]", ensure [Company] is the new one
+                    if (fText.toLowerCase().includes('by ') && companyName) {
+                        // Careful not to double replace if we just did it in step 1
+                        if (!fText.includes(companyName)) {
+                            // This is tricky if "by" and "Ichsan" are split.
+                            // But usually they are in the same text node if plain text.
+                            // If not, Step 1 helps.
+                            // If "by" matches but company not found, maybe append?
+                            // No, unsafe. Assume Step 1 covers the explicit "Ichsan Labs" case.
+                        }
+                    }
+
+                    fNode.nodeValue = fText;
+                }
+            });
+
+            // Fallback: If "Ichsan Labs" wasn't found in any text node (maybe inside a Link's innerText?)
+            // We search ALL links in footer containers
+            footerContainers.forEach(container => {
+                const links = container.querySelectorAll('a');
+                links.forEach(link => {
+                    if (/ichsan\s*labs?/i.test(link.innerText)) {
+                        link.innerText = companyName;
+                    }
+                });
+            });
+        }
 
         // --- B. CSS Branding Injection (SKIPPED IF ORIGINAL) ---
         if (!isOriginal && theme) {
@@ -187,498 +537,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     --color-text-main: ${theme.textMain} !important;
                     --color-text-muted: ${theme.textMuted} !important;
                     --color-border: ${theme.border} !important;
-                    --color-bg-soft: ${theme.bgSoft} !important; /* New Soft Background */
-                    --theme-font: ${theme.font} !important;
-                }
-                
-                body, html {
-                    background-color: var(--color-bg) !important;
-                    color: var(--color-text-main) !important;
-                    font-family: var(--theme-font) !important;
-                }
-                
-                /* Sidebar */
-                .sidebar, aside, .sidebar-wrapper {
-                    background-color: var(--color-sidebar) !important;
-                    color: #FFFFFF !important;
-                    border-right: 1px solid var(--color-border) !important;
-                }
-                .sidebar h1, .sidebar h2, .sidebar h3, .sidebar h4, .sidebar h5, .sidebar h6,
-                .sidebar p, .sidebar span, .sidebar strong, .sidebar i {
-                    color: #FFFFFF !important;
-                    opacity: 0.95;
-                }
-                .sidebar .text-muted, .sidebar small {
-                    color: rgba(255,255,255,0.6) !important;
-                }
-                .sidebar a, .nav-link, .sidebar button, .sidebar .btn {
-                    background: transparent !important;
-                    color: rgba(255,255,255,0.75) !important;
-                    border: none !important;
-                    text-align: left !important;
-                    font-weight: 500 !important;
-                    transition: all 0.2s ease !important;
-                }
-                .sidebar a:hover, .nav-link:hover, .sidebar button:hover, .sidebar .btn:hover, 
-                .sidebar .active, .nav-item.active {
-                    background: linear-gradient(90deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05)) !important;
-                    color: #FFFFFF !important;
-                    border-radius: 8px !important;
-                    padding-left: 12px !important;
-                }
-                
-                /* Buttons */
-                main .btn, main button, .primary-btn, .action-btn {
-                    background: linear-gradient(135deg, var(--color-gradient-main), var(--color-gradient-accent)) !important;
-                    color: white !important;
-                    border: none !important;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
-                }
-                
-                /* Surface / Cards */
-                .card, .panel, .glass-panel, .surface {
-                    background-color: var(--color-surface) !important;
-                    border: 1px solid var(--color-border) !important;
-                    color: var(--color-text-main) !important;
-                }
-
-                /* --- TARGETING THE "GREEN TABLE" (INFO BOX) --- */
-                /* Matches common alert/note/instruction patterns */
-                /* Also matches explicit green usage if possible */
-                .alert, .note, .instruction, .info-box, .message-box, 
-                div[class*="info"], div[class*="note"], div[class*="alert"],
-                .tutorial-box, .tip {
-                    background-color: var(--color-bg-soft) !important;
-                    border: 1px solid var(--color-primary) !important;
-                    color: var(--color-text-main) !important;
-                    border-radius: 12px !important;
-                }
-                
-                /* Ensure icons inside text match the theme */
-                .alert i, .note i, .instruction i, .info-box i {
-                    color: var(--color-primary) !important;
-                }
-
-                /* General Headings */
-                main h1, main h2, main h3, main h4 { color: var(--color-text-main) !important; }
-                main p { color: var(--color-text-muted) !important; }
-                a { color: var(--color-primary) !important; text-decoration: none; }
-            `;
-
-            // Controls
-            const deviceBtns = document.querySelectorAll('.device-btn');
-            const previewContainer = document.querySelector('.preview-container');
-            // const downloadBtn = document.getElementById('downloadBtn');
-            const copyBtn = document.getElementById('copyBtn');
-            const copyPromptBtn = document.getElementById('copyPromptBtn');
-
-            // State
-            let currentNavItems = [];
-
-            // --- Core Logic ---
-
-            // ... (Existing Functions) ...
-
-            // --- Event Listeners ---
-
-            // Theme Preset Handler (Direct Update)
-            if (themePresetInput) {
-                themePresetInput.addEventListener('change', updatePreview);
-            }
-
-            // Live update triggers
-            // IMPORTANT: Include themePresetInput? No, its change listener handles it.
-            // However, if manual input changes, we should set preset to 'custom'
-            const inputs = [brandNameInput, sloganInput, logoUrlInput, companyNameInput, primaryColorInput, colorModeInput, fontFamilyInput, bgStyleInput, navPositionInput, sidebarColorInput];
-
-
-
-            // 1. Update Preview
-            function updatePreview() {
-                const rawHtml = htmlInput.value;
-                if (!rawHtml) return;
-
-                try {
-                    const modHtml = generateModifiedHtml(rawHtml);
-                    const blob = new Blob([modHtml], { type: 'text/html' });
-                    const url = URL.createObjectURL(blob);
-
-                    // Critical Fix: Clear srcdoc so src takes precedence
-                    previewFrame.removeAttribute('srcdoc');
-                    previewFrame.src = url;
-
-                } catch (err) {
-                    console.error("Preview Generation Error:", err);
-                    previewFrame.removeAttribute('src');
-                    previewFrame.srcdoc = `<div style="color:red;padding:20px;">Error generating preview: ${err.message}</div>`;
-                }
-            }
-
-
-
-            // 1.5 Smart Detection (Auto-fill)
-            function detectBranding(html) {
-                if (!html) return;
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-
-                // --- Detect Brand Name ---
-                // Priority: 1. Semantic classes 2. H1/H2 3. Document Title
-                let brandFound = false;
-
-                // Strategy A: Explicit Selectors
-                const brandSelectors = [
-                    '.navbar-brand', '.brand', '.logo', '.logo-text', '.brand-name',
-                    '.sidebar-header h1', '.sidebar-header h2', '.sidebar-header h3',
-                    'header h1', 'header h2', '.app-name', '.site-title',
-                    '.sidebar-brand', '.sidebar-title', 'a.brand', 'a.navbar-brand span'
-                ];
-
-                for (let sel of brandSelectors) {
-                    const el = doc.querySelector(sel);
-                    if (el && el.innerText.trim().length > 0 && el.innerText.trim().length < 40) {
-                        detectedBrandName.value = el.innerText.trim();
-                        brandFound = true;
-                        break;
-                    }
-                }
-
-                // Strategy B: If no explicit selector, look for the first H1 or significant H2
-                if (!brandFound) {
-                    const headings = doc.querySelectorAll('h1, h2');
-                    for (let h of headings) {
-                        if (h.innerText.trim().length > 2 && h.innerText.trim().length < 30) {
-                            detectedBrandName.value = h.innerText.trim();
-                            brandFound = true;
-                            break;
-                        }
-                    }
-                }
-
-                // Strategy C: Document Title (Final Fallback)
-                if (!brandFound && doc.title && doc.title.length < 50) {
-                    // Remove common suffixes like " - Home", " | Official"
-                    let cleanTitle = doc.title.split(/[-|]/)[0].trim();
-                    if (cleanTitle.length > 0) {
-                        detectedBrandName.value = cleanTitle;
-                        brandFound = true;
-                    }
-                }
-
-                // AUTO-FILL Brand Input
-                if (brandFound) {
-                    brandNameInput.value = detectedBrandName.value;
-                } else {
-                    detectedBrandName.value = "Not detected";
-                    // Optional: Keep value empty or set placeholder? Keep value empty.
-                }
-
-                // --- Detect Slogan ---
-                let sloganFound = false;
-                // Broader selectors for detection
-                const sloganSelectors = [
-                    '.slogan', '.subtitle', '.tagline', '.description',
-                    '.sidebar-header p', '.sidebar-header small', '.sidebar-header span',
-                    'header p', 'header small',
-                    '.hero-text p', '.hero-section p', '.main-header p'
-                ];
-
-                for (let sel of sloganSelectors) {
-                    const el = doc.querySelector(sel);
-                    if (el && el.innerText.trim().length > 0 && el.innerText.trim().length < 80) { // Increased length limit slightly
-                        // Filter out common non-slogan text
-                        const text = el.innerText.toLowerCase();
-                        if (!text.includes('admin') && !text.includes('menu') && !text.includes('copyright')) {
-                            detectedSlogan.value = el.innerText.trim();
-                            sloganFound = true;
-                            break;
-                        }
-                    }
-                }
-
-                // AUTO-FILL Slogan Input
-                if (sloganFound) {
-                    sloganInput.value = detectedSlogan.value;
-                } else {
-                    detectedSlogan.value = "Not detected";
-                }
-
-                // --- Detect Logo ---
-                // Broader selectors for logo
-                const logoSelectors = [
-                    '.brand img', '.logo img', '.navbar-brand img',
-                    'header img', '.sidebar-header img', 'img.logo',
-                    'img.brand-logo', '#logo img', 'a.brand-link img'
-                ];
-
-                // Try all logo selectors
-                let logoImg = null;
-                for (let sel of logoSelectors) {
-                    logoImg = doc.querySelector(sel);
-                    if (logoImg) break;
-                }
-
-                if (logoImg && logoImg.src) {
-                    detectedLogo.value = "Found image";
-                    detectedLogo.title = logoImg.src;
-                    if (!logoUrlInput.value) logoUrlInput.value = logoImg.src; // Auto-fill URL
-                } else {
-                    detectedLogo.value = "Not detected";
-                }
-
-                // --- Detect Company (Footer) ---
-                const footerCopyright = doc.querySelectorAll('footer p, footer div, .copyright, .footer-text, .footer-copyright, footer span');
-                let companyFound = false;
-
-                // 1. Try standard "Copyright" patterns
-                for (let el of footerCopyright) {
-                    const text = el.innerText.toLowerCase();
-                    if (text.includes('©') || text.includes('copyright')) {
-                        let cleanText = el.innerText.replace(/[\n\r]+/g, ' ').trim();
-                        const match = cleanText.match(/©\s*\d{4}\s*(.*?)(\.|$)/);
-                        if (match && match[1]) {
-                            detectedCompany.value = match[1].replace(/All rights reserved/i, '').trim();
-                        } else {
-                            if (cleanText.length > 50) cleanText = cleanText.substring(0, 47) + "...";
-                            detectedCompany.value = cleanText;
-                        }
-                        companyFound = true;
-                        break;
-                    }
-                }
-
-                // 2. Try "By [Name]" pattern (common in footers/sidebars like "by Ichsan Labs")
-                if (!companyFound) {
-                    // Traverse all footer text or sidebar text for "by"
-                    const allTextEls = doc.querySelectorAll('footer *, .sidebar-footer *, .sidebar *, .panel-footer *');
-                    for (let el of allTextEls) {
-                        // Avoid empty or huge blocks
-                        if (el.children.length > 0) continue;
-
-                        const text = el.innerText.trim();
-                        if (text.toLowerCase().startsWith('by ') && text.length < 40) {
-                            let extracted = text.substring(3).trim(); // Remove "by "
-                            detectedCompany.value = extracted;
-                            companyFound = true;
-                            break;
-                        }
-                    }
-                }
-
-                // 3. Fallback: Search for specific user request "ichsan labs" if it appears anywhere relevant
-                if (!companyFound) {
-                    const bodyText = doc.body.innerText.toLowerCase();
-                    if (bodyText.includes('ichsan labs')) {
-                        detectedCompany.value = "Ichsan Labs";
-                        companyFound = true;
-                    }
-                }
-
-                // AUTO-FILL Company Input
-                if (companyFound) {
-                    companyNameInput.value = detectedCompany.value;
-                } else {
-                    detectedCompany.value = "Not detected";
-                }
-            }
-
-            // 2. Generate Modified HTML (The "Rebranding" Engine)
-            function generateModifiedHtml(html) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-
-                const selectedThemeKey = themePresetInput ? themePresetInput.value : 'original';
-                const isOriginal = selectedThemeKey === 'original';
-                const theme = themeConfigs[selectedThemeKey] || themeConfigs['modernPurple'];
-
-                // --- Helper: Global Text Replace ---
-                // Walks through all text nodes and replaces occurrences of 'search' with 'replace'
-                function replaceGlobalText(root, search, replace) {
-                    if (!search || !replace || search === "Not detected" || search.trim().length === 0) return;
-
-                    // Normalize
-                    const safeSearch = search.trim();
-                    const safeReplace = replace.trim();
-
-                    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
-                    let node;
-                    const nodesToUpdate = [];
-
-                    while (node = walker.nextNode()) {
-                        const parent = node.parentNode;
-                        if (!parent) continue;
-                        const tag = parent.tagName;
-
-                        // Safety: Skip script, style, and code-related blocks
-                        if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEXTAREA' || tag === 'CODE' || tag === 'PRE') continue;
-
-                        if (node.nodeValue.includes(safeSearch)) {
-                            nodesToUpdate.push(node);
-                        }
-                    }
-
-                    // Update after walking to avoid messing up the walker
-                    nodesToUpdate.forEach(n => {
-                        // Global replaceAll in the text content
-                        // Simple split/join is safer than regex for literal strings
-                        n.nodeValue = n.nodeValue.split(safeSearch).join(safeReplace);
-                    });
-                }
-
-                // --- A. Content Replacement (Rebranding) ---
-
-                // 1. App Name
-                const brandName = brandNameInput.value;
-                const currentDetectedBrand = detectedBrandName.value;
-                if (brandName) {
-                    // Strategy: Global Text Node Replacement (SAFE)
-                    // This replaces the text wherever it appears without destroying elements
-                    replaceGlobalText(doc.body, currentDetectedBrand, brandName);
-
-                    // Minimal Fallback: Update Title
-                    doc.title = brandName;
-                }
-
-                // 2. Slogan
-                const slogan = sloganInput.value;
-                const currentDetectedSlogan = detectedSlogan.value;
-                if (slogan) {
-                    // Strategy: Global Text Node Replacement (SAFE)
-                    replaceGlobalText(doc.body, currentDetectedSlogan, slogan);
-                }
-
-                // 3. Logo
-                const logoUrl = logoUrlInput.value;
-                if (logoUrl) {
-                    const originalSrc = detectedLogo.title;
-
-                    // Strategy A: Global Src Replace
-                    if (originalSrc) {
-                        const allImgs = doc.querySelectorAll('img');
-                        allImgs.forEach(img => {
-                            if (img.src === originalSrc || img.getAttribute('src') === originalSrc) {
-                                img.src = logoUrl;
-                                if (img.srcset) img.removeAttribute('srcset');
-                            }
-                        });
-                    }
-
-                    // Strategy B: Selectors Fallback (Safe, only updates src)
-                    const logoSelectors = [
-                        '.logo img', '.brand img', 'img.logo', 'header img',
-                        '.sidebar-header img', 'img.brand-logo', '.navbar-brand img',
-                        '#logo img'
-                    ];
-                    logoSelectors.forEach(sel => {
-                        const imgs = doc.querySelectorAll(sel);
-                        imgs.forEach(img => {
-                            img.src = logoUrl;
-                            if (img.srcset) img.removeAttribute('srcset');
-                        });
-                    });
-                }
-
-                // 4. Company Name
-                const companyName = companyNameInput.value;
-                const currentDetectedComp = detectedCompany.value;
-                if (companyName) {
-                    // Priority 1: Global Replace of detected company
-                    replaceGlobalText(doc.body, currentDetectedComp, companyName);
-
-                    // Priority 2: Targeted Footer Updates (Text Node Walker - SAFE)
-                    const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null, false);
-                    let node;
-                    const copysToUpdate = [];
-                    while (node = walker.nextNode()) {
-                        // Skip sensitive tags just in case
-                        if (node.parentNode && ['SCRIPT', 'STYLE'].includes(node.parentNode.tagName)) continue;
-
-                        if (node.nodeValue.includes('©') || node.nodeValue.toLowerCase().includes('copyright')) {
-                            copysToUpdate.push(node);
-                        }
-                    }
-
-                    // Strategy: Element-Level Search for Footer (Handles fragmented nodes)
-                    // We search for the container, then act on its text/HTML
-                    const footerContainers = doc.querySelectorAll('footer, .footer, .copyright, .sidebar-footer, small, .legal');
-
-                    footerContainers.forEach(container => {
-                        // Safety Check: Don't nuuke complex sub-trees (but footer containers are usually safe to traverse)
-                        // We'll use a specific walker for the footer context
-                        const footerWalker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
-                        let fNode;
-                        while (fNode = footerWalker.nextNode()) {
-                            let fText = fNode.nodeValue;
-
-                            // 1. Explicit Replacement of "Ichsan Labs" (User reported mismatch)
-                            // Because detection might have failed or been exact-match only
-                            if (/ichsan\s*labs?/i.test(fText)) {
-                                fText = fText.replace(/ichsan\s*labs?/gi, companyName);
-                            }
-
-                            // 2. Explicit Replacement of "Sulap Foto" (App Name) in Footer
-                            if (/sulap\s*foto/i.test(fText) && brandName) {
-                                fText = fText.replace(/sulap\s*foto/gi, brandName);
-                            }
-
-                            // 3. Explicit Replacement of "v3.6 pro" (Slogan) in Footer
-                            if (/v\s*3\.6\s*pro/i.test(fText) && slogan) {
-                                fText = fText.replace(/v\s*3\.6\s*pro/gi, slogan);
-                            }
-
-                            // 4. Standard Detected Brand/Slogan Replace (if not caught above)
-                            if (currentDetectedBrand && currentDetectedBrand !== "Not detected" && brandName) {
-                                const escBrand = currentDetectedBrand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                                fText = fText.replace(new RegExp(escBrand, 'gi'), brandName);
-                            }
-
-                            // 5. Structure Fix: "by [Company]" 
-                            // If we see "by [Company]", ensure [Company] is the new one
-                            if (fText.toLowerCase().includes('by ') && companyName) {
-                                // Careful not to double replace if we just did it in step 1
-                                if (!fText.includes(companyName)) {
-                                    // This is tricky if "by" and "Ichsan" are split.
-                                    // But usually they are in the same text node if plain text.
-                                    // If not, Step 1 helps.
-                                    // If "by" matches but company not found, maybe append?
-                                    // No, unsafe. Assume Step 1 covers the explicit "Ichsan Labs" case.
-                                }
-                            }
-
-                            fNode.nodeValue = fText;
-                        }
-                    });
-
-                    // Fallback: If "Ichsan Labs" wasn't found in any text node (maybe inside a Link's innerText?)
-                    // We search ALL links in footer containers
-                    footerContainers.forEach(container => {
-                        const links = container.querySelectorAll('a');
-                        links.forEach(link => {
-                            if (/ichsan\s*labs?/i.test(link.innerText)) {
-                                link.innerText = companyName;
-                            }
-                        });
-                    });
-                }
-
-                // --- B. CSS Branding Injection (SKIPPED IF ORIGINAL) ---
-                if (!isOriginal && theme) {
-                    const styleTag = doc.createElement('style');
-
-                    // 1. Define Variables & Overrides
-                    const css = `
-                :root {
-                    --color-primary: ${theme.primary} !important;
-                    --color-primary-hover: ${theme.primaryHover} !important;
-                    --color-secondary: ${theme.secondary} !important;
-                    --color-gradient-main: ${theme.gradientMain} !important;
-                    --color-gradient-accent: ${theme.gradientAccent} !important;
-                    --color-sidebar: ${theme.sidebar} !important;
-                    --color-bg: ${theme.bg} !important;
-                    --color-surface: ${theme.surface} !important;
-                    --color-text-main: ${theme.textMain} !important;
-                    --color-text-muted: ${theme.textMuted} !important;
-                    --color-border: ${theme.border} !important;
+                    --color-bg-soft: ${theme.bgSoft} !important;
                     --theme-font: ${theme.font} !important;
                 }
                 
@@ -742,6 +601,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     color: var(--color-text-main) !important;
                 }
 
+                /* --- TARGETING THE "GREEN TABLE" (INFO BOX) --- */
+                .alert, .note, .instruction, .info-box, .message-box, 
+                div[class*="info"], div[class*="note"], div[class*="alert"],
+                .tutorial-box, .tip {
+                    background-color: var(--color-bg-soft) !important;
+                    border: 1px solid var(--color-primary) !important;
+                    color: var(--color-text-main) !important;
+                    border-radius: 12px !important;
+                }
+                .alert i, .note i, .instruction i, .info-box i {
+                    color: var(--color-primary) !important;
+                }
+
                 /* General Headings */
                 main h1, main h2, main h3, main h4 { color: var(--color-text-main) !important; }
                 main p { color: var(--color-text-muted) !important; }
@@ -750,312 +622,312 @@ document.addEventListener('DOMContentLoaded', () => {
                 a { color: var(--color-primary) !important; text-decoration: none; }
             `;
 
-                    styleTag.innerHTML = css;
-                    doc.head.appendChild(styleTag);
+            styleTag.innerHTML = css;
+            doc.head.appendChild(styleTag);
+        }
+
+        // --- D. Javascript String Literal Replacement (The Root Cause Fix) ---
+        // The footer (and other parts) are likely rendered by JS. 
+        // Our previous methods skipped <script> tags for safety. 
+        // Now we carefully replace specific string literals INSIDE the scripts.
+
+        const scriptTags = doc.querySelectorAll('script');
+        scriptTags.forEach(script => {
+            if (script.src) return; // Skip external scripts
+            let jsContent = script.innerHTML;
+            let jsModified = false;
+
+            // Helper to safely replace string literals in JS
+            // We look for quotes to ensure we are replacing value strings, not variable names
+            // exact match for safe replacement
+
+            // 1. Company Name
+            if (currentDetectedComp && currentDetectedComp !== "Not detected" && companyName) {
+                // Regex to match "Ichsan Labs" or 'Ichsan Labs'
+                // We don't use \b because of spaces. 
+                // We hope it's a unique enough string.
+                if (jsContent.includes(currentDetectedComp)) {
+                    // Global replace of the string
+                    const re = new RegExp(currentDetectedComp.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+                    jsContent = jsContent.replace(re, companyName);
+                    jsModified = true;
                 }
-
-                // --- D. Javascript String Literal Replacement (The Root Cause Fix) ---
-                // The footer (and other parts) are likely rendered by JS. 
-                // Our previous methods skipped <script> tags for safety. 
-                // Now we carefully replace specific string literals INSIDE the scripts.
-
-                const scriptTags = doc.querySelectorAll('script');
-                scriptTags.forEach(script => {
-                    if (script.src) return; // Skip external scripts
-                    let jsContent = script.innerHTML;
-                    let jsModified = false;
-
-                    // Helper to safely replace string literals in JS
-                    // We look for quotes to ensure we are replacing value strings, not variable names
-                    // exact match for safe replacement
-
-                    // 1. Company Name
-                    if (currentDetectedComp && currentDetectedComp !== "Not detected" && companyName) {
-                        // Regex to match "Ichsan Labs" or 'Ichsan Labs'
-                        // We don't use \b because of spaces. 
-                        // We hope it's a unique enough string.
-                        if (jsContent.includes(currentDetectedComp)) {
-                            // Global replace of the string
-                            const re = new RegExp(currentDetectedComp.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-                            jsContent = jsContent.replace(re, companyName);
-                            jsModified = true;
-                        }
-                    }
-
-                    // 2. Brand Name
-                    if (currentDetectedBrand && currentDetectedBrand !== "Not detected" && brandName) {
-                        if (jsContent.includes(currentDetectedBrand)) {
-                            const re = new RegExp(currentDetectedBrand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-                            jsContent = jsContent.replace(re, brandName);
-                            jsModified = true;
-                        }
-                    }
-
-                    // 3. Slogan
-                    if (currentDetectedSlogan && currentDetectedSlogan !== "Not detected" && slogan) {
-                        if (jsContent.includes(currentDetectedSlogan)) {
-                            const re = new RegExp(currentDetectedSlogan.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-                            jsContent = jsContent.replace(re, slogan);
-                            jsModified = true;
-                        }
-                    }
-
-                    // 4. Hardcoded Fallbacks (for known patterns like "Ichsan Labs")
-                    if (companyName) {
-                        if (/["']Ichsan Labs["']/i.test(jsContent)) {
-                            jsContent = jsContent.replace(/Ichsan Labs/gi, companyName);
-                            jsModified = true;
-                        }
-                    }
-
-                    if (jsModified) {
-                        script.innerHTML = jsContent;
-                    }
-                });
-
-                // --- E. Nav Renaming (Preserved) ---
-                if (currentNavItems.length > 0) {
-                    const allLinks = doc.querySelectorAll('a, button, [role="button"], .nav-item, li');
-                    currentNavItems.forEach((item, idx) => {
-                        const input = document.getElementById(`nav-item-${idx}`);
-                        if (input && input.value && input.value !== item.original) {
-                            replaceGlobalText(doc.body, item.original, input.value);
-                        }
-                    });
-                }
-
-                // CRITICAL: Ensure strict DOCTYPE to prevent Quirks Mode issues
-                return "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
             }
 
-            // 3. Extract Nav Items (Improved x3)
-            function extractNavItems() {
-                const rawHtml = htmlInput.value;
-                if (!rawHtml) return;
+            // 2. Brand Name
+            if (currentDetectedBrand && currentDetectedBrand !== "Not detected" && brandName) {
+                if (jsContent.includes(currentDetectedBrand)) {
+                    const re = new RegExp(currentDetectedBrand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+                    jsContent = jsContent.replace(re, brandName);
+                    jsModified = true;
+                }
+            }
 
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(rawHtml, 'text/html');
+            // 3. Slogan
+            if (currentDetectedSlogan && currentDetectedSlogan !== "Not detected" && slogan) {
+                if (jsContent.includes(currentDetectedSlogan)) {
+                    const re = new RegExp(currentDetectedSlogan.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+                    jsContent = jsContent.replace(re, slogan);
+                    jsModified = true;
+                }
+            }
 
-                // Target specifically the button spans in this template, plus standard links
-                const specificButtons = doc.querySelectorAll('button.sidebar-btn span, button.sidebar-sub-btn');
-                const generalLinks = doc.querySelectorAll('nav a, .sidebar a, .menu a, .nav-link, li a');
+            // 4. Hardcoded Fallbacks (for known patterns like "Ichsan Labs")
+            if (companyName) {
+                if (/["']Ichsan Labs["']/i.test(jsContent)) {
+                    jsContent = jsContent.replace(/Ichsan Labs/gi, companyName);
+                    jsModified = true;
+                }
+            }
 
-                // Merge node lists
-                const potentialNavs = [...specificButtons, ...generalLinks];
+            if (jsModified) {
+                script.innerHTML = jsContent;
+            }
+        });
 
-                currentNavItems = [];
-                navEditor.innerHTML = '';
+        // --- E. Nav Renaming (Preserved) ---
+        if (currentNavItems.length > 0) {
+            const allLinks = doc.querySelectorAll('a, button, [role="button"], .nav-item, li');
+            currentNavItems.forEach((item, idx) => {
+                const input = document.getElementById(`nav-item-${idx}`);
+                if (input && input.value && input.value !== item.original) {
+                    replaceGlobalText(doc.body, item.original, input.value);
+                }
+            });
+        }
 
-                let count = 0;
-                const seenTexts = new Set();
+        // CRITICAL: Ensure strict DOCTYPE to prevent Quirks Mode issues
+        return "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
+    }
 
-                potentialNavs.forEach((el, index) => {
-                    let text = el.innerText;
-                    if (!text) return;
+    // 3. Extract Nav Items (Improved x3)
+    function extractNavItems() {
+        const rawHtml = htmlInput.value;
+        if (!rawHtml) return;
 
-                    // Cleanup
-                    text = text.replace(/New|Pro|Beta|Hot/gi, '').trim();
-                    text = text.replace(/[\uE000-\uF8FF]/g, '').trim(); // Remove icons
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(rawHtml, 'text/html');
 
-                    if (text.length < 2) return;
-                    if (seenTexts.has(text)) return;
-                    seenTexts.add(text);
+        // Target specifically the button spans in this template, plus standard links
+        const specificButtons = doc.querySelectorAll('button.sidebar-btn span, button.sidebar-sub-btn');
+        const generalLinks = doc.querySelectorAll('nav a, .sidebar a, .menu a, .nav-link, li a');
 
-                    if (text.length > 30) return;
+        // Merge node lists
+        const potentialNavs = [...specificButtons, ...generalLinks];
 
-                    currentNavItems.push({ original: text, index: count });
+        currentNavItems = [];
+        navEditor.innerHTML = '';
 
-                    const row = document.createElement('div');
-                    row.className = 'comparison-row';
-                    row.style.marginBottom = "8px";
+        let count = 0;
+        const seenTexts = new Set();
 
-                    // Pre-fill the input with the original text for easy editing
-                    row.innerHTML = `
+        potentialNavs.forEach((el, index) => {
+            let text = el.innerText;
+            if (!text) return;
+
+            // Cleanup
+            text = text.replace(/New|Pro|Beta|Hot/gi, '').trim();
+            text = text.replace(/[\uE000-\uF8FF]/g, '').trim(); // Remove icons
+
+            if (text.length < 2) return;
+            if (seenTexts.has(text)) return;
+            seenTexts.add(text);
+
+            if (text.length > 30) return;
+
+            currentNavItems.push({ original: text, index: count });
+
+            const row = document.createElement('div');
+            row.className = 'comparison-row';
+            row.style.marginBottom = "8px";
+
+            // Pre-fill the input with the original text for easy editing
+            row.innerHTML = `
                 <div class="dual-input">
                     <input type="text" class="detected-input" value="${text}" readonly title="Original Label">
                     <i class="fa-solid fa-arrow-right"></i>
                     <input type="text" id="nav-item-${count}" value="${text}" placeholder="Rename '${text}'">
                 </div>
             `;
-                    // Add listener to the NEW input
-                    const inputField = row.querySelector(`#nav-item-${count}`);
-                    if (inputField) {
-                        inputField.addEventListener('input', updatePreview);
-                    }
-
-                    navEditor.appendChild(row);
-                    count++;
-                });
-
-                if (count === 0) {
-                    navEditor.innerHTML = '<div class="empty-state">No navigation links detected.</div>';
-                }
+            // Add listener to the NEW input
+            const inputField = row.querySelector(`#nav-item-${count}`);
+            if (inputField) {
+                inputField.addEventListener('input', updatePreview);
             }
 
-            // --- Helpers ---
-            function adjustHue(hex, degree) {
-                // Simple distinct color generator
-                // Remove hash
-                hex = hex.replace('#', '');
-                // Parse r, g, b
-                let r = parseInt(hex.substring(0, 2), 16);
-                let g = parseInt(hex.substring(2, 4), 16);
-                let b = parseInt(hex.substring(4, 6), 16);
-
-                // Simple shift (not true HSL rotation but works for generating a variant)
-                // Check which channel is dominant and shift others
-                if (r > g && r > b) { g += 50; b += 50; }
-                else if (g > r && g > b) { r += 50; b += 50; }
-                else { r += 50; g += 50; }
-
-                r = Math.min(255, r); g = Math.min(255, g); b = Math.min(255, b);
-
-                return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
-            }
-
-            // --- Event Listeners ---
-
-
-
-            htmlInput.addEventListener('input', () => {
-                // For simplicity: We call it here.
-                if (htmlInput.value.length > 20 && !brandNameInput.value) {
-                    detectBranding(htmlInput.value);
-                }
-
-                extractNavItems();
-                updatePreview();
-            });
-
-            refreshNavBtn.addEventListener('click', extractNavItems);
-
-            // Device toggles
-            deviceBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    deviceBtns.forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-
-                    const mode = btn.dataset.mode;
-                    if (mode === 'mobile') {
-                        previewContainer.classList.remove('desktop-mode');
-                        previewContainer.classList.add('mobile-mode');
-                    } else {
-                        previewContainer.classList.remove('mobile-mode');
-                        previewContainer.classList.add('desktop-mode');
-                    }
-                });
-            });
-
-            // Apply Button
-            applyBtn.addEventListener('click', () => {
-                // Just trigger update again (visual feedback)
-                updatePreview();
-                applyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Applied!';
-                fileNameDisplay.style.color = '#1e293b';
-                setTimeout(() => {
-                    applyBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Apply Customisation';
-                }, 1500);
-            });
-
-            // Copy Code
-            // Copy Prompt
-            if (copyPromptBtn) {
-                copyPromptBtn.addEventListener('click', () => {
-                    const brand = brandNameInput.value || "app";
-                    // Clean filename: lower case, spaces to underscores
-                    const filename = brand.toLowerCase().replace(/\s+/g, '_') + ".html";
-                    const promptText = `create an empty file called "${filename}"`;
-
-                    navigator.clipboard.writeText(promptText).then(() => {
-                        const originalHtml = copyPromptBtn.innerHTML;
-                        copyPromptBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
-                        setTimeout(() => {
-                            copyPromptBtn.innerHTML = originalHtml;
-                        }, 2000);
-                    });
-                });
-            }
-
-            // Copy Code (Obfuscated)
-            if (copyBtn) {
-                copyBtn.addEventListener('click', () => {
-                    const rawHtml = generateModifiedHtml(htmlInput.value);
-
-                    // Obfuscate using escape/unescape as requested
-                    // Default company for comment: Flowsstack
-                    const comp = "Flowsstack";
-
-                    const escaped = escape(rawHtml);
-                    const finalCode = `<script>\n<!--code by ${comp} -->\ndocument.write(unescape("${escaped}"));\n</script>`;
-
-                    navigator.clipboard.writeText(finalCode).then(() => {
-                        copyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
-                        setTimeout(() => {
-                            copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy Code';
-                        }, 2000);
-                    });
-                });
-            }
-
-            // File Upload Handler
-            htmlUpload.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-
-                fileNameDisplay.innerText = file.name;
-
-                // Show loading state
-                previewFrame.srcdoc = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;color:#64748b;">Processing file...</div>';
-
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const rawContent = event.target.result;
-                    if (!rawContent) {
-                        alert("File content is empty!");
-                        return;
-                    }
-
-                    // Unpack if necessary
-                    const content = unpackHtml(rawContent);
-                    htmlInput.value = content;
-
-                    // Reset to "Not Detected" defaults first
-                    detectedBrandName.value = "Not detected";
-                    detectedSlogan.value = "Not detected";
-                    detectedLogo.value = "Not detected";
-                    detectedCompany.value = "Not detected";
-
-                    // Clear inputs
-                    brandNameInput.value = '';
-                    sloganInput.value = '';
-                    logoUrlInput.value = '';
-                    companyNameInput.value = '';
-
-                    // Run logic with safety
-                    try {
-                        detectBranding(content);
-                    } catch (err) {
-                        console.error("Branding detection failed:", err);
-                        detectedBrandName.value = "Error scanning";
-                    }
-
-                    try {
-                        extractNavItems();
-                    } catch (err) {
-                        console.error("Nav extraction failed:", err);
-                        navEditor.innerHTML = '<div class="empty-state">Error loading navigation</div>';
-                    }
-
-                    // Update preview
-                    updatePreview();
-                };
-
-                reader.onerror = (err) => {
-                    console.error("File reading failed", err);
-                    alert("Error reading file");
-                };
-
-                reader.readAsText(file);
-            });
-
+            navEditor.appendChild(row);
+            count++;
         });
+
+        if (count === 0) {
+            navEditor.innerHTML = '<div class="empty-state">No navigation links detected.</div>';
+        }
+    }
+
+    // --- Helpers ---
+    function adjustHue(hex, degree) {
+        // Simple distinct color generator
+        // Remove hash
+        hex = hex.replace('#', '');
+        // Parse r, g, b
+        let r = parseInt(hex.substring(0, 2), 16);
+        let g = parseInt(hex.substring(2, 4), 16);
+        let b = parseInt(hex.substring(4, 6), 16);
+
+        // Simple shift (not true HSL rotation but works for generating a variant)
+        // Check which channel is dominant and shift others
+        if (r > g && r > b) { g += 50; b += 50; }
+        else if (g > r && g > b) { r += 50; b += 50; }
+        else { r += 50; g += 50; }
+
+        r = Math.min(255, r); g = Math.min(255, g); b = Math.min(255, b);
+
+        return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    }
+
+    // --- Event Listeners ---
+
+
+
+    htmlInput.addEventListener('input', () => {
+        // For simplicity: We call it here.
+        if (htmlInput.value.length > 20 && !brandNameInput.value) {
+            detectBranding(htmlInput.value);
+        }
+
+        extractNavItems();
+        updatePreview();
+    });
+
+    refreshNavBtn.addEventListener('click', extractNavItems);
+
+    // Device toggles
+    deviceBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            deviceBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const mode = btn.dataset.mode;
+            if (mode === 'mobile') {
+                previewContainer.classList.remove('desktop-mode');
+                previewContainer.classList.add('mobile-mode');
+            } else {
+                previewContainer.classList.remove('mobile-mode');
+                previewContainer.classList.add('desktop-mode');
+            }
+        });
+    });
+
+    // Apply Button
+    applyBtn.addEventListener('click', () => {
+        // Just trigger update again (visual feedback)
+        updatePreview();
+        applyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Applied!';
+        fileNameDisplay.style.color = '#1e293b';
+        setTimeout(() => {
+            applyBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Apply Customisation';
+        }, 1500);
+    });
+
+    // Copy Code
+    // Copy Prompt
+    if (copyPromptBtn) {
+        copyPromptBtn.addEventListener('click', () => {
+            const brand = brandNameInput.value || "app";
+            // Clean filename: lower case, spaces to underscores
+            const filename = brand.toLowerCase().replace(/\s+/g, '_') + ".html";
+            const promptText = `create an empty file called "${filename}"`;
+
+            navigator.clipboard.writeText(promptText).then(() => {
+                const originalHtml = copyPromptBtn.innerHTML;
+                copyPromptBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+                setTimeout(() => {
+                    copyPromptBtn.innerHTML = originalHtml;
+                }, 2000);
+            });
+        });
+    }
+
+    // Copy Code (Obfuscated)
+    if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+            const rawHtml = generateModifiedHtml(htmlInput.value);
+
+            // Obfuscate using escape/unescape as requested
+            // Default company for comment: Flowsstack
+            const comp = "Flowsstack";
+
+            const escaped = escape(rawHtml);
+            const finalCode = `<script>\n<!--code by ${comp} -->\ndocument.write(unescape("${escaped}"));\n</script>`;
+
+            navigator.clipboard.writeText(finalCode).then(() => {
+                copyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+                setTimeout(() => {
+                    copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy Code';
+                }, 2000);
+            });
+        });
+    }
+
+    // File Upload Handler
+    htmlUpload.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        fileNameDisplay.innerText = file.name;
+
+        // Show loading state
+        previewFrame.srcdoc = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;color:#64748b;">Processing file...</div>';
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const rawContent = event.target.result;
+            if (!rawContent) {
+                alert("File content is empty!");
+                return;
+            }
+
+            // Unpack if necessary
+            const content = unpackHtml(rawContent);
+            htmlInput.value = content;
+
+            // Reset to "Not Detected" defaults first
+            detectedBrandName.value = "Not detected";
+            detectedSlogan.value = "Not detected";
+            detectedLogo.value = "Not detected";
+            detectedCompany.value = "Not detected";
+
+            // Clear inputs
+            brandNameInput.value = '';
+            sloganInput.value = '';
+            logoUrlInput.value = '';
+            companyNameInput.value = '';
+
+            // Run logic with safety
+            try {
+                detectBranding(content);
+            } catch (err) {
+                console.error("Branding detection failed:", err);
+                detectedBrandName.value = "Error scanning";
+            }
+
+            try {
+                extractNavItems();
+            } catch (err) {
+                console.error("Nav extraction failed:", err);
+                navEditor.innerHTML = '<div class="empty-state">Error loading navigation</div>';
+            }
+
+            // Update preview
+            updatePreview();
+        };
+
+        reader.onerror = (err) => {
+            console.error("File reading failed", err);
+            alert("Error reading file");
+        };
+
+        reader.readAsText(file);
+    });
+
+});
