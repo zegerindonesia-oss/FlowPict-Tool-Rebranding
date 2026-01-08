@@ -387,17 +387,34 @@ document.addEventListener('DOMContentLoaded', () => {
         const brandName = brandNameInput.value;
         const currentDetectedBrand = detectedBrandName.value;
         if (brandName) {
-            // Priority 1: Global Replace of detected name
+            // Priority 1: Global Replace of detected name (Text Nodes)
             replaceGlobalText(doc.body, currentDetectedBrand, brandName);
 
-            // Priority 2: Fallback for Navbar/Title if detection wasn't perfect but selectors work
-            const candidates = doc.querySelectorAll('.navbar-brand, .brand, .logo, h1, .brand-name, .sidebar-brand, .site-title');
-            candidates.forEach(el => {
-                // If the element has VERY short text (likely just the brand), force update
-                if (el.innerText.trim().length > 0 && el.innerText.trim().length < 50) {
-                    // Only if it doesn't contain children elements (keep structure)
-                    if (el.children.length === 0) el.innerText = brandName;
-                }
+            // Priority 2: Robust Fallback Selectors (Matches Detection Logic)
+            // Includes all selectors used in detectBranding helper
+            const brandSelectors = [
+                '.navbar-brand', '.brand', '.logo', '.logo-text', '.brand-name',
+                '.sidebar-header h1', '.sidebar-header h2', '.sidebar-header h3',
+                'header h1', 'header h2', '.app-name', '.site-title',
+                '.sidebar-brand', '.sidebar-title', 'a.brand', 'a.navbar-brand span',
+                '.text-lg.font-bold', '.font-bold.text-xl' // Common Tailwind patterns
+            ];
+
+            brandSelectors.forEach(sel => {
+                const els = doc.querySelectorAll(sel);
+                els.forEach(el => {
+                    // Check if it matches detected brand OR is a likely candidate
+                    // We use textContent to ignore tags (handles "Sulap <span>Foto</span>")
+                    // But we must be careful not to replace huge blocks.
+                    const text = el.textContent.trim();
+                    if (text === currentDetectedBrand.trim() || text.includes(currentDetectedBrand.trim())) {
+                        el.textContent = brandName;
+                    }
+                    else if (text.length > 0 && text.length < 50 && el.children.length === 0) {
+                        // Loose candidate match for very short titles
+                        el.textContent = brandName;
+                    }
+                });
             });
             doc.title = brandName;
         }
@@ -410,16 +427,29 @@ document.addEventListener('DOMContentLoaded', () => {
             replaceGlobalText(doc.body, currentDetectedSlogan, slogan);
 
             // Priority 2: Fallback Selectors
-            const potentialSlogans = doc.querySelectorAll('.slogan, .subtitle, p.description, .tagline, .sidebar-header p, .sidebar-header small, .version-badge');
-            potentialSlogans.forEach(el => {
-                if (el.innerText && el.innerText.trim().length > 0) {
-                    // Be careful not to wipe out big descriptions if they weren't the detected slogan
-                    // But user wants "Slogan" field to update these spots.
-                    // We only force update if detection was empty or failed.
-                    if (!currentDetectedSlogan || currentDetectedSlogan === "Not detected") {
-                        el.innerText = slogan;
+            const sloganSelectors = [
+                '.slogan', '.subtitle', '.tagline', '.description',
+                '.sidebar-header p', '.sidebar-header small', '.sidebar-header span',
+                'header p', 'header small',
+                '.hero-text p', '.hero-section p', '.main-header p',
+                '.version-badge', '.badge', '.app-version'
+            ];
+
+            sloganSelectors.forEach(sel => {
+                const els = doc.querySelectorAll(sel);
+                els.forEach(el => {
+                    const text = el.innerText.trim();
+                    if (text.length > 0) {
+                        // If it matches detected or is "Not detected", we replace.
+                        if (currentDetectedSlogan !== "Not detected" && text.includes(currentDetectedSlogan)) {
+                            el.innerText = slogan;
+                        }
+                        else if (currentDetectedSlogan === "Not detected" && text.length < 100) {
+                            // Only replace generic containers if we didn't suspect a specific slogan, to be safe
+                            el.innerText = slogan;
+                        }
                     }
-                }
+                });
             });
         }
 
