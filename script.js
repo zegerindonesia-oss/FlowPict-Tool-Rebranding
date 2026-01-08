@@ -545,6 +545,90 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.head.appendChild(styleTag);
         }
 
+        // --- D. Runtime Enforcement Information Script ---
+        // This script is injected into the preview to aggressively fix the footer 
+        // if the original app's JS dynamically renders or reverts it.
+        const runtimeScript = doc.createElement('script');
+        runtimeScript.innerHTML = `
+            (function() {
+                const config = {
+                    brand: "${brandName || ''}",
+                    slogan: "${slogan || ''}",
+                    company: "${companyName || ''}",
+                    bps: {
+                        oldComp: /ichsan\\s*labs?/i,
+                        oldBrand: /sulap\\s*foto/i,
+                        oldSlogan: /v\\s*3\\.6\\s*pro/i
+                    }
+                };
+
+                function enforceBranding() {
+                    if (!config.brand && !config.company) return;
+
+                    // Target Footer-like elements
+                    const targets = document.querySelectorAll('footer, .footer, .copyright, small, div[class*="footer"], div[class*="copyright"]');
+                    
+                    targets.forEach(el => {
+                        // Avoid editing if it contains inputs/scripts
+                        if (el.querySelector('input, script, textarea')) return;
+
+                        let text = el.innerText;
+                        let modified = false;
+
+                        // 1. Replace "Ichsan Labs" -> Company
+                        if (config.company && config.bps.oldComp.test(text)) {
+                            text = text.replace(config.bps.oldComp, config.company);
+                            modified = true;
+                        }
+
+                        // 2. Replace "Sulap Foto" -> Brand
+                        if (config.brand && config.bps.oldBrand.test(text)) {
+                            text = text.replace(config.bps.oldBrand, config.brand);
+                            modified = true;
+                        }
+                        
+                        // 3. Replace "v3.6 pro" -> Slogan
+                        if (config.slogan && config.bps.oldSlogan.test(text)) {
+                            text = text.replace(config.bps.oldSlogan, config.slogan);
+                            modified = true;
+                        }
+
+                        // 4. Force "by [Company]" if missing but we are in a copyright line
+                        if (config.company && (text.includes('©') || text.toLowerCase().includes('copyright')) && !text.includes(config.company)) {
+                             if (text.toLowerCase().includes('by ')) {
+                                 // Replace existing "by ..." suffix
+                                 const parts = text.split(/by /i);
+                                 text = parts[0] + "by " + config.company;
+                                 modified = true;
+                             }
+                        }
+
+                        if (modified) {
+                            el.innerText = text;
+                        }
+                    });
+                }
+
+                // Run immediately
+                enforceBranding();
+
+                // Run periodically (every 500ms for 5 seconds) to catch delayed scripts
+                let count = 0;
+                const interval = setInterval(() => {
+                    enforceBranding();
+                    count++;
+                    if (count > 10) clearInterval(interval);
+                }, 500);
+
+                // Observe DOM changes (The Nuclear Option)
+                const observer = new MutationObserver((mutations) => {
+                    enforceBranding();
+                });
+                observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+            })();
+        `;
+        doc.body.appendChild(runtimeScript);
+
         // --- C. Nav Renaming (Preserved) ---
         if (currentNavItems.length > 0) {
             const allLinks = doc.querySelectorAll('a, button, [role="button"], .nav-item, li');
