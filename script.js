@@ -9,12 +9,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const previewFrame = document.getElementById('previewFrame');
     const refreshNavBtn = document.getElementById('refreshNav');
     const navEditor = document.getElementById('navEditor');
+    const applyBtn = document.getElementById('applyBtn');
 
-    // Inputs
+    // Inputs (New & Detected)
     const brandNameInput = document.getElementById('brandName');
+    const detectedBrandName = document.getElementById('detectedBrandName');
+
     const sloganInput = document.getElementById('slogan');
+    const detectedSlogan = document.getElementById('detectedSlogan');
+
     const logoUrlInput = document.getElementById('logoUrl');
+    const detectedLogo = document.getElementById('detectedLogo');
+
     const companyNameInput = document.getElementById('companyName');
+    const detectedCompany = document.getElementById('detectedCompany');
+
     const primaryColorInput = document.getElementById('primaryColor');
     const colorModeInput = document.getElementById('colorMode'); // solid/gradient
     const fontFamilyInput = document.getElementById('fontFamily');

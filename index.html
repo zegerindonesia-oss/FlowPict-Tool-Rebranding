@@ -68,22 +68,49 @@
                         <h3>Custom Your Brand</h3>
                     </div>
 
-                    <div class="form-grid">
-                        <div class="input-field">
+                    <div class="comparison-grid">
+                        <!-- App Name -->
+                        <div class="comparison-row">
                             <label>App Name</label>
-                            <input type="text" id="brandName" placeholder="Auto-detected...">
+                            <div class="dual-input">
+                                <input type="text" id="detectedBrandName" class="detected-input" readonly
+                                    placeholder="Detected Name">
+                                <i class="fa-solid fa-arrow-right"></i>
+                                <input type="text" id="brandName" placeholder="New Name">
+                            </div>
                         </div>
-                        <div class="input-field">
+
+                        <!-- Slogan -->
+                        <div class="comparison-row">
                             <label>Slogan</label>
-                            <input type="text" id="slogan" placeholder="Auto-detected...">
+                            <div class="dual-input">
+                                <input type="text" id="detectedSlogan" class="detected-input" readonly
+                                    placeholder="Detected Slogan">
+                                <i class="fa-solid fa-arrow-right"></i>
+                                <input type="text" id="slogan" placeholder="New Slogan">
+                            </div>
                         </div>
-                        <div class="input-field full-width">
+
+                        <!-- Logo URL -->
+                        <div class="comparison-row">
                             <label>Logo URL</label>
-                            <input type="text" id="logoUrl" placeholder="Auto-detected...">
+                            <div class="dual-input">
+                                <input type="text" id="detectedLogo" class="detected-input" readonly
+                                    placeholder="Detected Logo URL">
+                                <i class="fa-solid fa-arrow-right"></i>
+                                <input type="text" id="logoUrl" placeholder="New Logo URL">
+                            </div>
                         </div>
-                        <div class="input-field full-width">
+
+                        <!-- Brand Company -->
+                        <div class="comparison-row">
                             <label>Brand Name (Company)</label>
-                            <input type="text" id="companyName" placeholder="e.g. Ichsan Labs (Footer)">
+                            <div class="dual-input">
+                                <input type="text" id="detectedCompany" class="detected-input" readonly
+                                    placeholder="Detected Company">
+                                <i class="fa-solid fa-arrow-right"></i>
+                                <input type="text" id="companyName" placeholder="New Company Name">
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -98,6 +125,10 @@
                     <div class="style-options">
                         <label>Primary Color</label>
                         <div class="color-picker-container">
+                            <div class="detected-color-wrapper" title="Detected Color (Approx)">
+                                <div id="detectedColorPreview" class="color-preview-box"></div>
+                            </div>
+                            <i class="fa-solid fa-arrow-right"></i>
                             <input type="color" id="primaryColor" value="#8B5CF6">
                             <select id="colorMode">
                                 <option value="solid">Solid</option>
@@ -122,7 +153,7 @@
                     </div>
                 </section>
 
-                <!-- Step 4: Navigation (Dynamic) -->
+                <!-- Step 4: Navigation -->
                 <section class="control-group">
                     <div class="group-header">
                         <span class="step-number">4</span>
@@ -130,21 +161,22 @@
                         <button id="refreshNav" class="icon-btn" title="Rescan Navigation"><i
                                 class="fa-solid fa-rotate"></i></button>
                     </div>
+                    <p class="helper-text">Original Link <i class="fa-solid fa-arrow-right"></i> New Label</p>
                     <div id="navEditor" class="nav-list">
                         <div class="empty-state">Paste HTML to edit navigation links</div>
                     </div>
                 </section>
 
-                <!-- Step 5: Navigation (Layout) -->
+                <!-- Step 5: Layout -->
                 <section class="control-group">
                     <div class="group-header">
                         <span class="step-number">5</span>
-                        <h3>Layout</h3>
+                        <h3>Custom Layout</h3>
                     </div>
                     <div class="style-options">
-                        <label>Navbar Position (If supported)</label>
+                        <label>Sidebar / Navbar Position</label>
                         <select id="navPosition">
-                            <option value="top">Top</option>
+                            <option value="top">Top (Default)</option>
                             <option value="left">Left Sidebar</option>
                             <option value="right">Right Sidebar</option>
                         </select>
@@ -153,8 +185,8 @@
             </div>
 
             <div class="panel-footer">
-                <button id="downloadBtn" class="btn primary-btn"><i class="fa-solid fa-download"></i> Export
-                    HTML</button>
+                <button id="applyBtn" class="btn primary-btn pulse-btn"><i class="fa-solid fa-wand-magic-sparkles"></i>
+                    Apply Customisation</button>
                 <div class="copyright">@copyright 2025 Flowsstack</div>
             </div>
         </aside>
