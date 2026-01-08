@@ -127,6 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const previewContainer = document.querySelector('.preview-container');
     // const downloadBtn = document.getElementById('downloadBtn');
     const copyBtn = document.getElementById('copyBtn');
+    const copyPromptBtn = document.getElementById('copyPromptBtn');
 
     // State
     let currentNavItems = [];
@@ -749,11 +750,37 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Copy Code
+    // Copy Prompt
+    if (copyPromptBtn) {
+        copyPromptBtn.addEventListener('click', () => {
+            const brand = brandNameInput.value || "app";
+            // Clean filename: lower case, spaces to underscores
+            const filename = brand.toLowerCase().replace(/\s+/g, '_') + ".html";
+            const promptText = `create an empty file called "${filename}"`;
+
+            navigator.clipboard.writeText(promptText).then(() => {
+                const originalHtml = copyPromptBtn.innerHTML;
+                copyPromptBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+                setTimeout(() => {
+                    copyPromptBtn.innerHTML = originalHtml;
+                }, 2000);
+            });
+        });
+    }
+
+    // Copy Code (Obfuscated)
     if (copyBtn) {
         copyBtn.addEventListener('click', () => {
-            const finalCode = generateModifiedHtml(htmlInput.value);
+            const rawHtml = generateModifiedHtml(htmlInput.value);
+
+            // Obfuscate using escape/unescape as requested
+            // Default company for comment: Flowsstack
+            const comp = "Flowsstack";
+
+            const escaped = escape(rawHtml);
+            const finalCode = `<script>\n<!--code by ${comp} -->\ndocument.write(unescape("${escaped}"));\n</script>`;
+
             navigator.clipboard.writeText(finalCode).then(() => {
-                copyBtn.innerText = 'Copied!';
                 copyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
                 setTimeout(() => {
                     copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy Code';
