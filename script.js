@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fontFamilyInput = document.getElementById('fontFamily');
     const bgStyleInput = document.getElementById('bgStyle');
     const navPositionInput = document.getElementById('navPosition');
+    const sidebarColorInput = document.getElementById('sidebarColor'); // New
 
     // Controls
     const deviceBtns = document.querySelectorAll('.device-btn');
@@ -61,6 +62,12 @@ document.addEventListener('DOMContentLoaded', () => {
             previewFrame.srcdoc = `<div style="color:red;padding:20px;">Error generating preview: ${err.message}</div>`;
         }
     }
+
+    // Live update triggers
+    const inputs = [brandNameInput, sloganInput, logoUrlInput, companyNameInput, primaryColorInput, colorModeInput, fontFamilyInput, bgStyleInput, navPositionInput, sidebarColorInput];
+    inputs.forEach(input => {
+        if (input) input.addEventListener('input', updatePreview);
+    });
 
     // 1.5 Smart Detection (Auto-fill)
     function detectBranding(html) {
@@ -170,25 +177,27 @@ document.addEventListener('DOMContentLoaded', () => {
             const currentDetected = detectedBrandName.value;
             let replaced = false;
 
-            // Try to find by exact text match first (High Precision)
+            // Try explicit replacement first
             if (currentDetected && currentDetected !== "Not detected") {
                 const allElements = doc.querySelectorAll('*');
                 for (let el of allElements) {
-                    // Check specific tags only to avoid replacing body text accidentally? No, brand can be anywhere.
-                    // Match exact text to avoid partial replacements in sentences
-                    if (el.children.length === 0 && el.innerText.trim() === currentDetected) {
-                        el.innerText = brandNameInput.value;
-                        replaced = true;
+                    // Strict match often fails due to hidden chars or spacing. Relax it.
+                    if (el.children.length === 0 && el.innerText.includes(currentDetected)) {
+                        // Only replace if it's the dominant text
+                        if (el.innerText.trim() === currentDetected.trim()) {
+                            el.innerText = brandNameInput.value;
+                            replaced = true;
+                        }
                     }
                 }
             }
-
-            // If explicit text match failed, try heuristic selectors again
+            // Fallback for tricky structures
             if (!replaced) {
                 const candidates = doc.querySelectorAll('.navbar-brand, .brand, .logo, h1, .brand-name');
-                candidates.forEach(el => { if (el.innerText.length < 50) el.innerText = brandNameInput.value; });
+                candidates.forEach(el => {
+                    if (el.innerText.length < 50 && el.innerText.length > 0) el.innerText = brandNameInput.value;
+                });
             }
-
             doc.title = brandNameInput.value;
         }
 
@@ -197,9 +206,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const currentDetected = detectedSlogan.value;
             let replaced = false;
             if (currentDetected && currentDetected !== "Not detected") {
-                const allElements = doc.querySelectorAll('p, span, small, div'); // Limit scope slightly
+                const allElements = doc.querySelectorAll('p, span, small, div');
                 for (let el of allElements) {
-                    if (el.children.length === 0 && el.innerText.trim() === currentDetected) {
+                    if (el.children.length === 0 && el.innerText.trim() === currentDetected.trim()) {
                         el.innerText = sloganInput.value;
                         replaced = true;
                     }
@@ -219,7 +228,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 4. Company
         if (companyNameInput.value) {
-            // Heuristic replacement
             const footerCopyright = doc.querySelectorAll('footer p, .copyright, .footer-text, .footer-copyright');
             footerCopyright.forEach(el => {
                 if (el.innerText.includes('©') || el.innerText.toLowerCase().includes('copyright')) {
@@ -228,19 +236,32 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // B. Apply Styling (Injected CSS) - No change needed here usually
+        // B. Apply Styling (Injected CSS)
         const styleTag = doc.createElement('style');
         let css = '';
         const pColor = primaryColorInput.value;
+        const sColor = sidebarColorInput.value; // New Sidebar Color
 
         if (colorModeInput.value === 'gradient') {
-            css += `:root { --primary: ${pColor}; --primary-gradient: linear-gradient(135deg, ${pColor} 0%, ${adjustHue(pColor, 40)} 100%) !important; } 
+            css += `:root { --primary: ${pColor}; --primary-gradient: linear-gradient(135deg, ${pColor} 0%, ${adjustHue(pColor, 40)} 100%) !important; }
                      .btn-primary, .primary-btn, button.primary, .active { background: var(--primary-gradient) !important; border-color: transparent !important; color: white !important; }
                      .text-gradient, h1 span, .brand { background: var(--primary-gradient) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; }`;
         } else {
-            css += `:root { --primary: ${pColor}; --primary-gradient: ${pColor} !important; } 
+            css += `:root { --primary: ${pColor}; --primary-gradient: ${pColor} !important; }
                      .btn-primary, .primary-btn, button { background: ${pColor} !important; color: white !important;}
                      a { color: ${pColor}; }`;
+        }
+
+        // Sidebar Color Override
+        if (sColor && sColor !== "#0f172a") {
+            css += `
+                nav, .sidebar, aside, .drawer, .navbar-vertical {
+                    background: ${sColor} !important;
+                    background-color: ${sColor} !important;
+                }
+                nav a, .sidebar a { color: rgba(255,255,255,0.8) !important; }
+                nav a:hover, .sidebar a:hover, nav a.active { color: white !important; background: rgba(255,255,255,0.1) !important; }
+            `;
         }
 
         css += `body, button, input, h1, h2, h3, a, span { font-family: ${fontFamilyInput.value} !important; }`;
@@ -262,33 +283,43 @@ document.addEventListener('DOMContentLoaded', () => {
         styleTag.innerHTML = css;
         doc.head.appendChild(styleTag);
 
-        // C. Apply Nav Renaming
+        // C. Apply Nav Renaming (More Aggressive Strategy)
         if (currentNavItems.length > 0) {
-            // We need to re-find the exact links.
-            // Best way: Use the 'data-original' or index we tracked.
-            // But since we are parsing fresh DOM, simple selector walk works if structure is same.
-            const links = doc.querySelectorAll('nav a, .navbar a, .menu a, .sidebar a, ul.nav li a, .nav-item a');
-            // Check if count matches to be safe?
+            // Because extractNavItems uses a specific logic, we must mirror it for replacement
+            // Or use a more robust "find by original text" approach
+            const allLinks = doc.querySelectorAll('a, button, [role="button"], .nav-item, li');
+
             let navIndex = 0;
-            links.forEach(link => {
-                if (link.innerText.trim().length > 1) { // Same filter as extract
-                    const input = document.getElementById(`nav-item-${navIndex}`);
-                    if (input && input.value) {
-                        // Replacing innerText destroys icons usually.
-                        // Try to replace ONLY the text node if possible.
-                        const walker = document.createTreeWalker(link, NodeFilter.SHOW_TEXT, null, false);
-                        let textNode = walker.nextNode();
-                        while (textNode) {
-                            if (textNode.nodeValue.trim().length > 0) {
-                                textNode.nodeValue = input.value;
-                                break; // Stop after first text replacement (usually the label)
+            // Iterate our Stored Nav Items because that's the source of truth for "what to replace"
+
+            // Build a map for faster lookup? No, just iterate
+            currentNavItems.forEach((item, idx) => {
+                const input = document.getElementById(`nav-item-${idx}`);
+                if (input && input.value && input.value !== item.original) {
+                    // Find element with this original text
+                    for (let el of allLinks) {
+                        // Clean detection text
+                        let rawText = el.innerText;
+                        if (!rawText) continue;
+
+                        // Check if this element matches the original text we detected
+                        // Note: The detected text 'item.original' already had badges stripped effectively
+                        // So we check if the element's text *contains* the original text
+                        if (rawText.includes(item.original)) {
+                            // Be careful not to wipe icons.
+                            // Find the text node that matches.
+                            const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+                            let textNode = walker.nextNode();
+                            while (textNode) {
+                                if (textNode.nodeValue.includes(item.original)) {
+                                    // Replace specific text
+                                    textNode.nodeValue = textNode.nodeValue.replace(item.original, input.value);
+                                    break;
+                                }
+                                textNode = walker.nextNode();
                             }
-                            textNode = walker.nextNode();
                         }
-                        // Fallback if no text node found (weird case)
-                        if (!textNode) link.innerText = input.value;
                     }
-                    navIndex++;
                 }
             });
         }
@@ -296,7 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return doc.documentElement.outerHTML;
     }
 
-    // 3. Extract Nav Items (Improved)
+    // 3. Extract Nav Items (Improved x2)
     function extractNavItems() {
         const rawHtml = htmlInput.value;
         if (!rawHtml) return;
@@ -304,27 +335,38 @@ document.addEventListener('DOMContentLoaded', () => {
         const parser = new DOMParser();
         const doc = parser.parseFromString(rawHtml, 'text/html');
 
-        // Broader selector for nav links
-        // Includes generic list items if they look like a menu
-        const links = doc.querySelectorAll('nav a, .navbar a, .menu a, .sidebar a, ul.nav li a, .nav-item a, a.nav-link');
+        // Broader selector to catch buttons and divs acting as links in sidebars
+        // Explicitly look for "Gabung Foto" style elements (often inside a button or list item)
+        const potentialNavs = doc.querySelectorAll('nav a, .sidebar a, .menu a, .nav-link, button.nav-btn, .sidebar button, .list-group-item, li a, .menu-item');
 
         currentNavItems = [];
         navEditor.innerHTML = '';
 
         let count = 0;
+        const seenTexts = new Set();
 
-        // Filter and Dedupe?
-        // Let's just create inputs for all strictly "nav-link" looking things
-        links.forEach((link, index) => {
-            const text = link.innerText.trim();
-            if (text.length < 2) return; // Skip empty/icon-only
+        potentialNavs.forEach((el, index) => {
+            // Get text but ignore "New", "Pro", badges
+            // Clone to not mess up DOM? No need, just parse text.
+            let text = el.innerText;
+            if (!text) return;
 
-            // Check visibility? Hard to do on static DOM parse.
+            // Cleanup: Remove common badge words
+            text = text.replace(/New|Pro|Beta|Hot/gi, '').trim();
+            // Remove icon chars (simple check)
+            text = text.replace(/[\uE000-\uF8FF]/g, '').trim();
+
+            if (text.length < 2) return;
+            if (seenTexts.has(text)) return; // Dedupe
+            seenTexts.add(text);
+
+            // Filter out obviously non-nav text (too long)
+            if (text.length > 30) return;
 
             currentNavItems.push({ original: text, index: count });
 
             const row = document.createElement('div');
-            row.className = 'comparison-row'; // Use the nice grid layout style if possible, or list
+            row.className = 'comparison-row';
             row.style.marginBottom = "8px";
 
             row.innerHTML = `
