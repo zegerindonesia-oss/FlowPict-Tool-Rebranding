@@ -147,17 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // However, if manual input changes, we should set preset to 'custom'
     const inputs = [brandNameInput, sloganInput, logoUrlInput, companyNameInput, primaryColorInput, colorModeInput, fontFamilyInput, bgStyleInput, navPositionInput, sidebarColorInput];
 
-    inputs.forEach(input => {
-        if (input) {
-            input.addEventListener('input', (e) => {
-                // If user changes style manually, switch dropdown to Custom
-                if ([primaryColorInput, sidebarColorInput, colorModeInput, bgStyleInput, fontFamilyInput].includes(e.target)) {
-                    themePresetInput.value = 'custom';
-                }
-                updatePreview();
-            });
-        }
-    });
+
 
     // 1. Update Preview
     function updatePreview() {

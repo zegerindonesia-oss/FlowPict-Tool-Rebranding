@@ -116,11 +116,12 @@
                     </div>
 
                     <div class="style-options">
-                        <label>Theme Preset</label>
-                        <select id="themePreset" style="margin-bottom: 16px; border: 2px solid var(--primary-color);">
-                            <option value="custom">Custom Configuration</option>
-                            <option value="modernPurple" selected>Modern Purple Gradient</option>
+                        <label>Select Theme Style</label>
+                        <select id="themePreset"
+                            style="margin-bottom: 20px; border: 2px solid var(--primary-color); padding: 10px; font-weight: 600;">
+                            <option value="modernPurple" selected>Modern Purple Gradient (Default)</option>
                             <option value="oceanBlue">Ocean Blue / Tech</option>
+                            <option value="midnightTeal">Midnight Teal / Modern</option>
                             <option value="classicBrown">Classic Brown / Elegant</option>
                             <option value="forestGreen">Forest Green / Nature</option>
                             <option value="sunsetOrange">Sunset Orange / Warm</option>
@@ -128,26 +129,35 @@
                             <option value="darkStealth">Dark Mode / Stealth</option>
                         </select>
 
-                        <label>Primary Color</label>
-                        <div class="color-picker-container">
-                            <div class="detected-color-wrapper" title="Detected Color (Approx)">
-                                <div id="detectedColorPreview" class="color-preview-box"></div>
+                        <!-- Hidden Inputs for Logic (Values populated by Theme Selection) -->
+                        <div style="display: none;">
+                            <label>Primary Color</label>
+                            <div class="color-picker-container">
+                                <div class="detected-color-wrapper" title="Detected Color (Approx)">
+                                    <div id="detectedColorPreview" class="color-preview-box"></div>
+                                </div>
+                                <i class="fa-solid fa-arrow-right"></i>
+                                <input type="color" id="primaryColor" value="#8B5CF6">
+                                <select id="colorMode">
+                                    <option value="solid">Solid</option>
+                                    <option value="gradient">Gradient</option>
+                                </select>
                             </div>
-                            <i class="fa-solid fa-arrow-right"></i>
-                            <input type="color" id="primaryColor" value="#8B5CF6">
-                            <select id="colorMode">
-                                <option value="solid">Solid</option>
-                                <option value="gradient">Gradient</option>
+
+                            <label>Sidebar Color (Overlay)</label>
+                            <div class="color-picker-container">
+                                <input type="color" id="sidebarColor" value="#0f172a">
+                            </div>
+
+                            <label>Background Style</label>
+                            <select id="bgStyle">
+                                <option value="light">Light (Clean)</option>
+                                <option value="gradient">Gradient (Soft)</option>
+                                <option value="dark">Dark (Modern)</option>
                             </select>
                         </div>
 
-                        <label>Sidebar Color (Overlay)</label>
-                        <div class="color-picker-container">
-                            <input type="color" id="sidebarColor" value="#0f172a">
-                            <span class="helper-text-small" style="font-size: 0.8rem; color: #64748b;">(Overrides
-                                sidebar background)</span>
-                        </div>
-
+                        <!-- Font Family (Kept Visible as it is independent) -->
                         <label>Font Family</label>
                         <select id="fontFamily">
                             <option value="'Inter', sans-serif">Inter (Modern)</option>
