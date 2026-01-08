@@ -65,8 +65,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Theme Configurations (Strictly Matched / Senada)
     const themeConfigs = {
         purpleModern: {
-            primary: '#8B5CF6', primaryHover: '#7C3AED', secondary: '#C4B5FD',
-            gradientMain: '#8B5CF6', gradientAccent: '#6366F1', sidebar: '#111827',
+            primary: '#8B5CF6', primaryHover: '#7C3AED', secondary: '#F472B6',
+            gradientMain: '#8B5CF6', gradientAccent: '#EC4899', sidebar: '#2E1065',
             bg: '#F9FAFB', surface: '#FFFFFF', textMain: '#1F2937', textMuted: '#6B7280', border: '#E5E7EB', font: 'Inter, sans-serif'
         },
         emeraldFresh: {
