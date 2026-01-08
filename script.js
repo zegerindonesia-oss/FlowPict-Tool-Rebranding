@@ -157,7 +157,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const brandSelectors = [
             '.navbar-brand', '.brand', '.logo', '.logo-text', '.brand-name',
             '.sidebar-header h1', '.sidebar-header h2', '.sidebar-header h3',
-            'header h1', 'header h2', '.app-name', '.site-title'
+            'header h1', 'header h2', '.app-name', '.site-title',
+            '.sidebar-brand', '.sidebar-title', 'a.brand', 'a.navbar-brand span'
         ];
 
         for (let sel of brandSelectors) {
