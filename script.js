@@ -456,18 +456,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
             copysToUpdate.forEach(n => {
                 let text = n.nodeValue;
-                // Try to find "by [Something]" or just append company if missing
-                const lower = text.toLowerCase();
 
-                // If there is "by ...", replace the rest
+                // 1. Force Replace App Name & Slogan (if they exist in this text node)
+                // This acts as a second pass specifically for the footer
+                if (currentDetectedBrand && currentDetectedBrand !== "Not detected" && brandName) {
+                    text = text.split(currentDetectedBrand).join(brandName);
+                }
+
+                if (currentDetectedSlogan && currentDetectedSlogan !== "Not detected" && slogan) {
+                    text = text.split(currentDetectedSlogan).join(slogan);
+                }
+
+                // 2. Company Name Replacement (Handle "by ...")
+                const lower = text.toLowerCase();
                 if (lower.includes('by ')) {
                     const match = text.match(/by\s+/i);
                     if (match) {
                         const index = match.index;
+                        // Keep everything before "by " (which now includes updated AppName/Slogan)
                         const prefix = text.substring(0, index + match[0].length);
-                        n.nodeValue = prefix + companyName;
+                        text = prefix + companyName;
                     }
+                } else if (!text.includes(companyName)) {
+                    // If no "by", but we are editing the copyright line, maybe append it?
+                    // Or just leave it if we can't be safe. 
+                    // Let's assume the user implies "by [Company]" if they are using the Company field.
                 }
+
+                n.nodeValue = text;
             });
 
             // Remove risky querySelector logic for footer
