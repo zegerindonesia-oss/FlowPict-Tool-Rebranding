@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlowPict Rebranding Tool</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar / Editor Panel -->
+        <aside class="editor-panel glass-panel">
+            <div class="panel-header">
+                <div class="brand">
+                    <div class="logo-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                    <div>
+                        <h1>FlowPict</h1>
+                        <span class="badge">Rebranding Tool</span>
+                    </div>
+                </div>
+                <p class="subtitle">by Flowsstack</p>
+            </div>
+
+            <div class="scroll-content">
+                <!-- Step 1: Input -->
+                <section class="control-group">
+                    <div class="group-header">
+                        <span class="step-number">1</span>
+                        <h3>Source Code</h3>
+                    </div>
+                    <div class="input-wrapper">
+                        <textarea id="htmlInput" placeholder="Paste your HTML code here..." spellcheck="false"></textarea>
+                    </div>
+                </section>
+
+                <!-- Step 2: Branding -->
+                <section class="control-group">
+                    <div class="group-header">
+                        <span class="step-number">2</span>
+                        <h3>Brand Identity</h3>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="input-field">
+                            <label>Brand Name</label>
+                            <input type="text" id="brandName" placeholder="e.g. My Agency">
+                        </div>
+                        <div class="input-field">
+                            <label>Slogan / Tagline</label>
+                            <input type="text" id="slogan" placeholder="e.g. AI Powered">
+                        </div>
+                        <div class="input-field full-width">
+                            <label>Logo URL</label>
+                            <input type="text" id="logoUrl" placeholder="https://...">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Step 3: Appearance -->
+                <section class="control-group">
+                    <div class="group-header">
+                        <span class="step-number">3</span>
+                        <h3>Appearance</h3>
+                    </div>
+                    
+                    <div class="style-options">
+                        <label>Primary Color</label>
+                        <div class="color-picker-container">
+                            <input type="color" id="primaryColor" value="#8B5CF6">
+                            <select id="colorMode">
+                                <option value="solid">Solid</option>
+                                <option value="gradient">Gradient</option>
+                            </select>
+                        </div>
+
+                        <label>Font Family</label>
+                        <select id="fontFamily">
+                            <option value="'Inter', sans-serif">Inter (Modern)</option>
+                            <option value="'Outfit', sans-serif">Outfit (Trendy)</option>
+                            <option value="'Roboto', sans-serif">Roboto (Classic)</option>
+                            <option value="'Open Sans', sans-serif">Open Sans</option>
+                        </select>
+
+                        <label>Background Style</label>
+                        <select id="bgStyle">
+                            <option value="light">Clean Light</option>
+                            <option value="gradient">Soft Gradient</option>
+                            <option value="dark">Dark Mode</option>
+                        </select>
+                    </div>
+                </section>
+
+                <!-- Step 4: Navigation (Dynamic) -->
+                <section class="control-group">
+                    <div class="group-header">
+                        <span class="step-number">4</span>
+                        <h3>Navigation</h3>
+                        <button id="refreshNav" class="icon-btn" title="Rescan Navigation"><i class="fa-solid fa-rotate"></i></button>
+                    </div>
+                    <div id="navEditor" class="nav-list">
+                        <div class="empty-state">Paste HTML to edit navigation links</div>
+                    </div>
+                </section>
+                 
+                  <!-- Step 5: Navigation (Layout) -->
+                <section class="control-group">
+                    <div class="group-header">
+                         <span class="step-number">5</span>
+                        <h3>Layout</h3>
+                    </div>
+                     <div class="style-options">
+                       <label>Navbar Position (If supported)</label>
+                        <select id="navPosition">
+                            <option value="top">Top</option>
+                            <option value="left">Left Sidebar</option>
+                             <option value="right">Right Sidebar</option>
+                        </select>
+                    </div>
+                </section>
+            </div>
+
+            <div class="panel-footer">
+                <button id="downloadBtn" class="btn primary-btn"><i class="fa-solid fa-download"></i> Export HTML</button>
+                <div class="copyright">@copyright 2025 Flowsstack</div>
+            </div>
+        </aside>
+
+        <!-- Preview Panel -->
+        <main class="preview-panel">
+            <div class="preview-header glass-panel">
+                <div class="device-controls">
+                    <button class="device-btn active" data-mode="desktop"><i class="fa-solid fa-desktop"></i></button>
+                    <button class="device-btn" data-mode="mobile"><i class="fa-solid fa-mobile-screen"></i></button>
+                </div>
+                <div class="preview-actions">
+                     <button id="copyBtn" class="btn secondary-btn"><i class="fa-regular fa-copy"></i> Copy Code</button>
+                    <a href="https://rebranding.ichsanlabs.com/" target="_blank" class="link-btn">Original Ref <i class="fa-solid fa-external-link"></i></a>
+                </div>
+            </div>
+            
+            <div class="preview-container desktop-mode">
+                <iframe id="previewFrame" sandbox="allow-scripts allow-same-origin"></iframe>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
