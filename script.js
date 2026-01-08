@@ -32,6 +32,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebarColorInput = document.getElementById('sidebarColor');
     const themePresetInput = document.getElementById('themePreset'); // New Theme Selector
 
+    // --- Helper: Unpack Obfuscated HTML ---
+    function unpackHtml(source) {
+        // Check for document.write(unescape('...')) pattern
+        const pattern = /document\.write\(\s*unescape\(\s*['"]([^'"]+)['"]\s*\)\s*\)/;
+        const match = source.match(pattern);
+        if (match && match[1]) {
+            try {
+                const decoded = unescape(match[1]);
+                console.log("Automatically unpacked obfuscated HTML.");
+                return decoded;
+            } catch (e) {
+                console.error("Failed to unpack HTML:", e);
+                return source;
+            }
+        }
+        // Check for decodeURIComponent pattern
+        const pattern2 = /document\.write\(\s*decodeURIComponent\(\s*['"]([^'"]+)['"]\s*\)\s*\)/;
+        const match2 = source.match(pattern2);
+        if (match2 && match2[1]) {
+            try {
+                const decoded = decodeURIComponent(match2[1]);
+                return decoded;
+            } catch (e) {
+                return source;
+            }
+        }
+        return source;
+    }
+
     // Theme Configurations
     // Theme Configurations (Strictly Matched / Senada)
     const themeConfigs = {
@@ -635,12 +664,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const reader = new FileReader();
         reader.onload = (event) => {
-            const content = event.target.result;
-            if (!content) {
+            const rawContent = event.target.result;
+            if (!rawContent) {
                 alert("File content is empty!");
                 return;
             }
 
+            // Unpack if necessary
+            const content = unpackHtml(rawContent);
             htmlInput.value = content;
 
             // Reset to "Not Detected" defaults first
