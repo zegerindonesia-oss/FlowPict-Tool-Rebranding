@@ -410,11 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Event Listeners ---
 
-    // Live update triggers
-    const inputs = [brandNameInput, sloganInput, logoUrlInput, companyNameInput, primaryColorInput, colorModeInput, fontFamilyInput, bgStyleInput, navPositionInput];
-    inputs.forEach(input => {
-        if (input) input.addEventListener('input', updatePreview);
-    });
+
 
     htmlInput.addEventListener('input', () => {
         // For simplicity: We call it here.
