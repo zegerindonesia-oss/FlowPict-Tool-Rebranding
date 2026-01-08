@@ -403,15 +403,19 @@ document.addEventListener('DOMContentLoaded', () => {
             brandSelectors.forEach(sel => {
                 const els = doc.querySelectorAll(sel);
                 els.forEach(el => {
+                    // SAFETY CHECK: Do not wipe out elements with complex structure (images, inputs, etc)
+                    // If it has standard block/inline children that might be important, skip textContent replacement
+                    if (el.querySelector('img, svg, input, button, select, textarea, div, form, iframe, canvas')) return;
+
                     // Check if it matches detected brand OR is a likely candidate
-                    // We use textContent to ignore tags (handles "Sulap <span>Foto</span>")
-                    // But we must be careful not to replace huge blocks.
                     const text = el.textContent.trim();
+
+                    // Method A: Strict Match with Detection
                     if (text === currentDetectedBrand.trim() || text.includes(currentDetectedBrand.trim())) {
                         el.textContent = brandName;
                     }
+                    // Method B: Loose Candidate (Short text, no children)
                     else if (text.length > 0 && text.length < 50 && el.children.length === 0) {
-                        // Loose candidate match for very short titles
                         el.textContent = brandName;
                     }
                 });
