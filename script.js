@@ -1,6 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Elements
     const htmlInput = document.getElementById('htmlInput');
+    const htmlUpload = document.getElementById('htmlUpload');
+    const fileNameDisplay = document.getElementById('fileName');
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+
     const previewFrame = document.getElementById('previewFrame');
     const refreshNavBtn = document.getElementById('refreshNav');
     const navEditor = document.getElementById('navEditor');
@@ -305,6 +310,37 @@ document.addEventListener('DOMContentLoaded', () => {
         link.href = URL.createObjectURL(blob);
         link.download = "rebranded_page.html";
         link.click();
+    });
+
+    // Tab Switching
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Remove active class
+            tabBtns.forEach(b => b.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
+
+            // Activate clicked
+            btn.classList.add('active');
+            const targetId = `tab-${btn.dataset.tab}`;
+            document.getElementById(targetId).classList.add('active');
+        });
+    });
+
+    // File Upload Handler
+    htmlUpload.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        fileNameDisplay.innerText = file.name;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const content = event.target.result;
+            htmlInput.value = content; // Sync with textarea
+            extractNavItems();
+            updatePreview();
+        };
+        reader.readAsText(file);
     });
 
 });

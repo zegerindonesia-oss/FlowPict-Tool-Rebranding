@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FlowPict Rebranding Tool</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+
 <body>
     <div class="app-container">
         <!-- Sidebar / Editor Panel -->
@@ -32,8 +36,28 @@
                         <span class="step-number">1</span>
                         <h3>Source Code</h3>
                     </div>
-                    <div class="input-wrapper">
-                        <textarea id="htmlInput" placeholder="Paste your HTML code here..." spellcheck="false"></textarea>
+
+                    <div class="input-tabs">
+                        <button class="tab-btn active" data-tab="paste">Paste Code</button>
+                        <button class="tab-btn" data-tab="upload">Upload File</button>
+                    </div>
+
+                    <div id="tab-paste" class="tab-content active">
+                        <div class="input-wrapper">
+                            <textarea id="htmlInput" placeholder="Paste your HTML code here..."
+                                spellcheck="false"></textarea>
+                        </div>
+                    </div>
+
+                    <div id="tab-upload" class="tab-content">
+                        <div class="file-upload-wrapper">
+                            <input type="file" id="htmlUpload" accept=".html,.htm" hidden>
+                            <label for="htmlUpload" class="upload-label">
+                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                                <span>Click to upload HTML file</span>
+                                <span id="fileName" class="file-name">No file chosen</span>
+                            </label>
+                        </div>
                     </div>
                 </section>
 
@@ -43,7 +67,7 @@
                         <span class="step-number">2</span>
                         <h3>Brand Identity</h3>
                     </div>
-                    
+
                     <div class="form-grid">
                         <div class="input-field">
                             <label>Brand Name</label>
@@ -66,7 +90,7 @@
                         <span class="step-number">3</span>
                         <h3>Appearance</h3>
                     </div>
-                    
+
                     <div class="style-options">
                         <label>Primary Color</label>
                         <div class="color-picker-container">
@@ -99,32 +123,34 @@
                     <div class="group-header">
                         <span class="step-number">4</span>
                         <h3>Navigation</h3>
-                        <button id="refreshNav" class="icon-btn" title="Rescan Navigation"><i class="fa-solid fa-rotate"></i></button>
+                        <button id="refreshNav" class="icon-btn" title="Rescan Navigation"><i
+                                class="fa-solid fa-rotate"></i></button>
                     </div>
                     <div id="navEditor" class="nav-list">
                         <div class="empty-state">Paste HTML to edit navigation links</div>
                     </div>
                 </section>
-                 
-                  <!-- Step 5: Navigation (Layout) -->
+
+                <!-- Step 5: Navigation (Layout) -->
                 <section class="control-group">
                     <div class="group-header">
-                         <span class="step-number">5</span>
+                        <span class="step-number">5</span>
                         <h3>Layout</h3>
                     </div>
-                     <div class="style-options">
-                       <label>Navbar Position (If supported)</label>
+                    <div class="style-options">
+                        <label>Navbar Position (If supported)</label>
                         <select id="navPosition">
                             <option value="top">Top</option>
                             <option value="left">Left Sidebar</option>
-                             <option value="right">Right Sidebar</option>
+                            <option value="right">Right Sidebar</option>
                         </select>
                     </div>
                 </section>
             </div>
 
             <div class="panel-footer">
-                <button id="downloadBtn" class="btn primary-btn"><i class="fa-solid fa-download"></i> Export HTML</button>
+                <button id="downloadBtn" class="btn primary-btn"><i class="fa-solid fa-download"></i> Export
+                    HTML</button>
                 <div class="copyright">@copyright 2025 Flowsstack</div>
             </div>
         </aside>
@@ -137,11 +163,12 @@
                     <button class="device-btn" data-mode="mobile"><i class="fa-solid fa-mobile-screen"></i></button>
                 </div>
                 <div class="preview-actions">
-                     <button id="copyBtn" class="btn secondary-btn"><i class="fa-regular fa-copy"></i> Copy Code</button>
-                    <a href="https://rebranding.ichsanlabs.com/" target="_blank" class="link-btn">Original Ref <i class="fa-solid fa-external-link"></i></a>
+                    <button id="copyBtn" class="btn secondary-btn"><i class="fa-regular fa-copy"></i> Copy Code</button>
+                    <a href="https://rebranding.ichsanlabs.com/" target="_blank" class="link-btn">Original Ref <i
+                            class="fa-solid fa-external-link"></i></a>
                 </div>
             </div>
-            
+
             <div class="preview-container desktop-mode">
                 <iframe id="previewFrame" sandbox="allow-scripts allow-same-origin"></iframe>
             </div>
@@ -150,4 +177,5 @@
 
     <script src="script.js"></script>
 </body>
+
 </html>
