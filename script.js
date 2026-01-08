@@ -46,9 +46,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const rawHtml = htmlInput.value;
         if (!rawHtml) return;
 
-        const blob = new Blob([generateModifiedHtml(rawHtml)], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        previewFrame.src = url;
+        try {
+            const modHtml = generateModifiedHtml(rawHtml);
+            const blob = new Blob([modHtml], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+
+            // Critical Fix: Clear srcdoc so src takes precedence
+            previewFrame.removeAttribute('srcdoc');
+            previewFrame.src = url;
+
+        } catch (err) {
+            console.error("Preview Generation Error:", err);
+            previewFrame.removeAttribute('src');
+            previewFrame.srcdoc = `<div style="color:red;padding:20px;">Error generating preview: ${err.message}</div>`;
+        }
     }
 
     // 1.5 Smart Detection (Auto-fill)
@@ -58,32 +69,61 @@ document.addEventListener('DOMContentLoaded', () => {
         const doc = parser.parseFromString(html, 'text/html');
 
         // Detect Brand Name
-        // Heuristic: Look for h1, .brand, .logo-text
-        const brandCandidates = doc.querySelectorAll('.navbar-brand, .brand, .logo, h1, .wrapper-logo');
+        const brandCandidates = doc.querySelectorAll('.navbar-brand, .brand, .logo, h1, .wrapper-logo, .brand-name, .logo-text, a.logo');
+        let foundBrand = false;
+
         for (let el of brandCandidates) {
             if (el.innerText && el.innerText.trim().length > 0 && el.innerText.trim().length < 30) {
-                // Only auto-fill if input is empty or user hasn't touched it (we can't track "touched" easily without state, so just check if empty for now?)
-                // BETTER: Just fill it, let user override.
-                if (!brandNameInput.value) brandNameInput.value = el.innerText.trim();
+                detectedBrandName.value = el.innerText.trim();
+                foundBrand = true;
                 break;
             }
+        }
+
+        // Fallback: Document Title
+        if (!foundBrand && doc.title) {
+            detectedBrandName.value = doc.title;
+        } else if (!foundBrand) {
+            detectedBrandName.value = "Not detected";
         }
 
         // Detect Slogan
         const sloganCandidates = doc.querySelectorAll('.slogan, .subtitle, p.description, .hero-text p');
+        let foundSlogan = false;
         for (let el of sloganCandidates) {
             if (el.innerText && el.innerText.trim().length > 0 && el.innerText.trim().length < 60) {
-                if (!sloganInput.value) sloganInput.value = el.innerText.trim();
+                detectedSlogan.value = el.innerText.trim();
+                foundSlogan = true;
                 break;
             }
         }
+        if (!foundSlogan) detectedSlogan.value = "Not detected";
 
         // Detect Logo
-        // Look for img inside .brand or .logo
-        const logoImg = doc.querySelector('.brand img, .logo img, .navbar-brand img, header img');
-        if (logoImg && logoImg.src && !logoUrlInput.value) {
-            logoUrlInput.value = logoImg.src;
+        const logoImg = doc.querySelector('.brand img, .logo img, .navbar-brand img, header img, img.logo');
+        if (logoImg && logoImg.src) {
+            detectedLogo.value = "Found image";
+            detectedLogo.title = logoImg.src;
+            // Pre-fill the new logo URL input with the old one for convenience? 
+            // User requested: "muncul semua fitur saat ini dan hendak dirubah menjadi apa"
+            // So logic says: Detected = old, Input = new.
+            // But if user wants to keep it, they leave new empty.
+            if (!logoUrlInput.value) logoUrlInput.placeholder = "Paste new URL to replace";
+        } else {
+            detectedLogo.value = "Not detected";
         }
+
+        // Detect Company
+        const footerCopyright = doc.querySelectorAll('footer p, .copyright, .footer-text, .footer-copyright');
+        let foundCompany = false;
+        for (let el of footerCopyright) {
+            if (el.innerText.includes('©') || el.innerText.toLowerCase().includes('copyright')) {
+                detectedCompany.value = el.innerText.replace(/[^a-zA-Z0-9 ]/g, "").trim().substring(0, 30) + "...";
+                foundCompany = true;
+                break;
+            }
+        }
+        if (!foundCompany) detectedCompany.value = "Not detected";
     }
 
     // 2. Generate Modified HTML (The "Rebranding" Engine)
