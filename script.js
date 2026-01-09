@@ -234,16 +234,41 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
                             });
 
-                            // Remove "Tonton Video Tutorial" button
-                            const allButtons = document.querySelectorAll('button, a, .btn');
-                            allButtons.forEach(btn => {
-                                if (btn.innerText && btn.innerText.toLowerCase().includes('tonton video tutorial')) {
-                                    btn.style.display = 'none';
-                                    // Or remove completely
-                                    btn.remove();
+                            // Remove "Tonton Video Tutorial" - ROBUST VERSION
+                            // 1. Search everything
+                            const allElements = document.body.getElementsByTagName('*');
+                            for (let i = 0; i < allElements.length; i++) {
+                                const el = allElements[i];
+                                // Check direct text content to avoid shielding by parents
+                                if (el.childNodes.length > 0) {
+                                    el.childNodes.forEach(node => {
+                                         if (node.nodeType === Node.TEXT_NODE && node.nodeValue.toLowerCase().includes('tonton video tutorial')) {
+                                             // Found the text node, now find the actionable parent (button/link/div acting as button)
+                                             let target = el;
+                                             // Walk up a few levels to see if we are inside a button-like wrapper
+                                             let parent = el.parentElement;
+                                             while(parent && parent !== document.body && (
+                                                 parent.tagName === 'BUTTON' || 
+                                                 parent.tagName === 'A' || 
+                                                 parent.className.includes('btn') ||
+                                                 parent.style.cursor === 'pointer'
+                                             )) {
+                                                 target = parent;
+                                                 parent = parent.parentElement;
+                                             }
+                                             target.style.display = 'none';
+                                             target.style.visibility = 'hidden';
+                                         }
+                                    });
                                 }
-                            });
+                            }
                         }
+
+                        // MutationObserver to catch late arrivals
+                        const observer = new MutationObserver((mutations) => {
+                            aggressiveFix();
+                        });
+                        observer.observe(document.body, { childList: true, subtree: true });
                         
                         // Run immediately and after a short delay
                         aggressiveFix();
