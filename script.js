@@ -578,7 +578,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 /* Exceptions for Badges (Backgrounds) */
                 /* Only reset background/border, keep text white */
                 .sidebar .badge, .sidebar .label, .sidebar .tag {
-                     /* Don't override background-color here, just text */
+                     background: rgba(255,255,255,0.2) !important;
+                     color: #FFFFFF !important;
+                }
+
+                /* --- TARGETING THE "CURVED GREEN" SHAPE --- */
+                /* Remove commonly used shape dividers or pseudo-elements in headers */
+                header::before, header::after, 
+                .main-header::before, .main-header::after,
+                .header-shape, .wave, .curve, .separator, .divider, .shape-divider,
+                .branding-header::before, .branding-header::after {
+                    background: none !important;
+                    background-image: none !important;
+                    display: none !important;
+                    opacity: 0 !important;
+                    content: none !important;
+                }
+                
+                /* Ensure no background image interferes */
+                header, .main-header {
+                    background-image: linear-gradient(90deg, var(--color-gradient-main), var(--color-gradient-accent)) !important;
+                    position: relative; 
+                    z-index: 10;
+                    overflow: hidden; /* Clip any children shapes */
+                }
+
+                /* Force Text White in Header - Specific Overrides */
+                header h1, header h2, header h3, header p, header span, header small,
+                .brand-name, .app-title, .subtitle, .tagline {
+                    color: #FFFFFF !important;
+                    -webkit-text-fill-color: #FFFFFF !important; /* Override gradients on text */
                 }
 
                 /* Sidebar Links & Buttons: CLEAN STYLE */
