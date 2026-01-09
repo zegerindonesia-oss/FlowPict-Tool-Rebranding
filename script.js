@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
             primary: '#8B5CF6', primaryHover: '#7C3AED', secondary: '#F472B6',
             gradientMain: '#8B5CF6', gradientAccent: '#EC4899', sidebar: '#2E1065',
             bg: '#F9FAFB', surface: '#FFFFFF', textMain: '#1F2937', textMuted: '#6B7280', border: '#E5E7EB', font: 'Inter, sans-serif',
-            bgSoft: '#F3E8FF' // Light Purple
+            bgSoft: 'rgba(139, 92, 246, 0.1)' // Transparent Purple (Fixed from Solid)
         },
         emeraldFresh: {
             primary: '#10B981', primaryHover: '#059669', secondary: '#6EE7B7',
@@ -620,6 +620,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 /* --- TARGETING THE "GREEN TABLE" (INFO BOX) --- */
                 .alert, .note, .instruction, .info-box, .message-box, 
                 div[class*="info"], div[class*="note"], div[class*="alert"],
+                .success, .alert-success, div[class*="success"],
+                .box, .notice, .callout,
+                table[class*="info"], table[class*="note"], table[class*="alert"], table[class*="success"],
                 .tutorial-box, .tip {
                     background-color: var(--color-bg-soft) !important; /* Soft Theme Background */
                     border: 1px solid var(--color-primary-hover) !important; /* Slightly darker border */
