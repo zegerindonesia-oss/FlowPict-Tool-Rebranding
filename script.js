@@ -228,6 +228,26 @@ document.addEventListener('DOMContentLoaded', () => {
                                     }
                                 }
                             });
+
+                            // 3. TUTORIAL BUTTON TERMINATOR AND HEADER TEXT FIX
+                            // Force Header Text to be white explicitly in JS if CSS fails
+                            const headerEls = document.querySelectorAll('header *, .main-header *, .app-header *');
+                            headerEls.forEach(el => {
+                                el.style.color = '#FFFFFF';
+                                if (window.getComputedStyle(el).webkitTextFillColor) {
+                                    el.style.webkitTextFillColor = '#FFFFFF';
+                                }
+                            });
+
+                            // Remove "Tonton Video Tutorial" button
+                            const allButtons = document.querySelectorAll('button, a, .btn');
+                            allButtons.forEach(btn => {
+                                if (btn.innerText && btn.innerText.toLowerCase().includes('tonton video tutorial')) {
+                                    btn.style.display = 'none';
+                                    // Or remove completely
+                                    btn.remove();
+                                }
+                            });
                         }
                         
                         // Run immediately and after a short delay
