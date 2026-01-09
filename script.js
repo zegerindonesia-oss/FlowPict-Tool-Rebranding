@@ -187,47 +187,42 @@ document.addEventListener('DOMContentLoaded', () => {
                                 });
                             }
 
-                            // 2. GREEN INFO BOX TERMINATOR
-                            const allEls = document.querySelectorAll('div, table, section, aside, .box');
-                            allEls.forEach(el => {
+                            // 4. ULTRA-AGGRESSIVE INFO BOX FIX (For "green transparent table")
+                            // We look specifically for the element structure shown in screenshots:
+                            // A box with an icon (i) and text.
+                            const potentialInfoBoxes = document.querySelectorAll('div, table, section, .alert, .box');
+                            potentialInfoBoxes.forEach(el => {
                                 const style = window.getComputedStyle(el);
                                 const bg = style.backgroundColor;
                                 
-                                // Detect Green/Teal backgrounds
-                                // rgb(0, 255, ...), rgb(..., 128, ...) etc.
-                                // Common "success" green: rgba(220, 252, 231) -> #dcfce7
-                                // Common "info" teal: cyan tones
-                                
-                                // Heuristic: Green channel > Red channel + 20 AND Green > Blue - 50 (roughly)
-                                // Better: Check specific common framework colors
-                                
-                                // IF background is GREEN-ish
+                                // Check if it matches the "Unggah 2-5 gambar" text content
+                                if (el.innerText && el.innerText.includes('Unggah 2-5 gambar')) {
+                                     el.style.backgroundColor = 'var(--color-bg-soft)';
+                                     el.style.borderColor = 'var(--color-primary)';
+                                     el.style.color = 'var(--color-text-main)';
+                                     // Also color the icon inside if any
+                                     const icon = el.querySelector('i, svg');
+                                     if(icon) icon.style.color = 'var(--color-primary)';
+                                     return;
+                                }
+
+                                // General Green/Cyan detection (low R, high G/B)
                                 if (bg.includes('rgba') || bg.includes('rgb')) {
-                                    // Parse RGB
                                     const rgb = bg.match(/\\d+/g);
                                     if (rgb && rgb.length >= 3) {
                                         const r = parseInt(rgb[0]);
                                         const g = parseInt(rgb[1]);
                                         const b = parseInt(rgb[2]);
                                         
-                                        // Is it green dominantly? (simple heuristic)
-                                        if (g > r + 30 && g > b - 30) {
-                                            // FORCE THEME COLOR
-                                            // We assume the theme injects a var for soft bg
+                                        // Mint/Green detection: r~200, g~250, b~240 or r~220, g~252, b~231
+                                        if (g > 200 && b > 200 && r < 230) {
                                             el.style.backgroundColor = 'var(--color-bg-soft)';
                                             el.style.borderColor = 'var(--color-primary)';
-                                            el.style.color = 'var(--color-text-main)';
-                                        }
-                                        
-                                        // Special case for the "instruction" box which might be light cyan
-                                        // e.g. #ccfbf1 (mint) -> r204 g251 b241
-                                        if (g > 200 && b > 200 && r < 220) {
-                                             el.style.backgroundColor = 'var(--color-bg-soft)';
-                                             el.style.borderColor = 'var(--color-primary)';
                                         }
                                     }
                                 }
                             });
+                        }
 
                             // 3. TUTORIAL BUTTON TERMINATOR AND HEADER TEXT FIX
                             // Force Header Text to be white explicitly in JS if CSS fails
@@ -642,7 +637,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     --color-text-muted: ${theme.textMuted} !important;
                     --color-border: ${theme.border} !important;
                     --color-bg-soft: ${theme.bgSoft} !important;
-                    --theme-font: ${theme.font} !important;
+                    --color-bg-soft: ${theme.bgSoft} !important;
+                    --theme-font: ${fontFamilyInput.value || theme.font} !important;
                 }
                 
                 body, html {
@@ -650,6 +646,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     color: var(--color-text-main) !important;
                     font-family: var(--theme-font) !important;
                 }
+                
+                /* Override background style if gradient is selected via manual input */
+                ${bgStyleInput.value === 'gradient' ? `
+                body, html {
+                    background: linear-gradient(135deg, var(--color-bg), var(--color-bg-soft)) !important; 
+                }
+                ` : ''}
+
+                ${bgStyleInput.value === 'dark' ? `
+                body, html {
+                   background-color: #0f172a !important;
+                   color: #f8fafc !important;
+                }
+                ` : ''}
                 
                 /* Sidebar: Enforce Gradient Background */
                 .sidebar, aside, .sidebar-wrapper, .nav-sidebar {
