@@ -158,7 +158,91 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const modHtml = generateModifiedHtml(rawHtml);
-            const blob = new Blob([modHtml], { type: 'text/html' });
+
+            // Inject Aggressive Fix Script
+            // We append a script that runs immediately after load to fix stubborn elements
+            const fixScript = `
+                <script>
+                    (function() {
+                        function aggressiveFix() {
+                            // 1. HEADER SHAPE TERMINATOR
+                            const header = document.querySelector('header, .main-header, .app-header');
+                            if (header) {
+                                // Find any child that has a border-radius > 50% or "circle" class
+                                // Or has a background color that is teal/cyan/green
+                                const children = header.querySelectorAll('*');
+                                children.forEach(child => {
+                                    const style = window.getComputedStyle(child);
+                                    const bg = style.backgroundColor;
+                                    
+                                    // Check for dangerous colors (teal, green, cyan)
+                                    // Simple check: simple regex for greenish hues or specific hexes if known
+                                    // For now, checks for "rgb(..." values that have high G/B and low R
+                                    
+                                    // SHAPE REMOVAL: Check if it looks like a decorative shape
+                                    if (style.position === 'absolute' || style.borderRadius === '50%' || style.borderRadius.includes('100%') || style.borderRadius.includes('999px')) {
+                                         // Hide it
+                                         child.style.display = 'none';
+                                    }
+                                });
+                            }
+
+                            // 2. GREEN INFO BOX TERMINATOR
+                            const allEls = document.querySelectorAll('div, table, section, aside, .box');
+                            allEls.forEach(el => {
+                                const style = window.getComputedStyle(el);
+                                const bg = style.backgroundColor;
+                                
+                                // Detect Green/Teal backgrounds
+                                // rgb(0, 255, ...), rgb(..., 128, ...) etc.
+                                // Common "success" green: rgba(220, 252, 231) -> #dcfce7
+                                // Common "info" teal: cyan tones
+                                
+                                // Heuristic: Green channel > Red channel + 20 AND Green > Blue - 50 (roughly)
+                                // Better: Check specific common framework colors
+                                
+                                // IF background is GREEN-ish
+                                if (bg.includes('rgba') || bg.includes('rgb')) {
+                                    // Parse RGB
+                                    const rgb = bg.match(/\\d+/g);
+                                    if (rgb && rgb.length >= 3) {
+                                        const r = parseInt(rgb[0]);
+                                        const g = parseInt(rgb[1]);
+                                        const b = parseInt(rgb[2]);
+                                        
+                                        // Is it green dominantly? (simple heuristic)
+                                        if (g > r + 30 && g > b - 30) {
+                                            // FORCE THEME COLOR
+                                            // We assume the theme injects a var for soft bg
+                                            el.style.backgroundColor = 'var(--color-bg-soft)';
+                                            el.style.borderColor = 'var(--color-primary)';
+                                            el.style.color = 'var(--color-text-main)';
+                                        }
+                                        
+                                        // Special case for the "instruction" box which might be light cyan
+                                        // e.g. #ccfbf1 (mint) -> r204 g251 b241
+                                        if (g > 200 && b > 200 && r < 220) {
+                                             el.style.backgroundColor = 'var(--color-bg-soft)';
+                                             el.style.borderColor = 'var(--color-primary)';
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                        
+                        // Run immediately and after a short delay
+                        aggressiveFix();
+                        setTimeout(aggressiveFix, 500);
+                        setTimeout(aggressiveFix, 1500);
+                        window.addEventListener('load', aggressiveFix);
+                    })();
+                </script>
+            `;
+
+            // Insert script before closing body
+            const finalHtml = modHtml.replace('</body>', fixScript + '</body>');
+
+            const blob = new Blob([finalHtml], { type: 'text/html' });
             const url = URL.createObjectURL(blob);
 
             // Critical Fix: Clear srcdoc so src takes precedence
@@ -600,7 +684,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     background-image: linear-gradient(90deg, var(--color-gradient-main), var(--color-gradient-accent)) !important;
                     position: relative; 
                     z-index: 10;
-                    overflow: hidden; /* Clip any children shapes */
+                    background-image: linear-gradient(90deg, var(--color-gradient-main), var(--color-gradient-accent)) !important;
+                    position: relative; 
+                    z-index: 10;
+                    overflow: visible !important; /* Allow content but hide shapes */
+                }
+                
+                /* Extra Specific Shape Killer */
+                header div[class*="shape"], header div[class*="circle"], 
+                header div[class*="bg-"], header img[class*="shape"] {
+                    display: none !important;
                 }
 
                 /* Force Text White in Header - Specific Overrides */
